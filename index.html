@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Independent Assortment in Meiosis I</title>
+<style>
+  :root{
+    --bg:#0f1724;
+    --panel:#16233a;
+    --ink:#eaf0f7;
+    --muted:#9fb0c6;
+    --line:#2c3d57;
+    --red:#d44f72;
+    --red-d:#a83655;
+    --blue:#2e6f9e;
+    --blue-d:#1f5278;
+    --cyto:#cfe0f2;
+    --cyto-line:#8fa8c9;
+    --accent:#7fd1c4;
+    --warn:#e8a33d;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+    line-height:1.5;
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:980px;margin:0 auto;}
+  header h1{
+    font-size:clamp(1.4rem,3.4vw,2rem);
+    margin:0 0 4px;
+    letter-spacing:-.01em;
+    font-weight:700;
+  }
+  header p{
+    margin:0 0 18px;
+    color:var(--muted);
+    font-size:.95rem;
+    max-width:640px;
+  }
+  .stage-track{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+  }
+  .stage-pill{
+    flex:1 1 0;
+    min-width:120px;
+    text-align:center;
+    padding:8px 6px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--panel);
+    color:var(--muted);
+    font-size:.8rem;
+    font-weight:600;
+    cursor:pointer;
+    transition:all .25s ease;
+    user-select:none;
+  }
+  .stage-pill .num{
+    display:block;
+    font-size:.68rem;
+    color:var(--accent);
+    letter-spacing:.08em;
+    margin-bottom:2px;
+  }
+  .stage-pill.active{
+    background:linear-gradient(180deg,#1d3252,#16233a);
+    color:var(--ink);
+    border-color:var(--accent);
+    box-shadow:0 0 0 1px var(--accent) inset;
+  }
+  .canvas-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:10px;
+    position:relative;
+  }
+  svg{width:100%;height:auto;display:block;border-radius:10px;background:#0b1320;}
+  .controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    margin-top:14px;
+  }
+  button.btn{
+    border:none;
+    border-radius:10px;
+    padding:10px 18px;
+    font-size:.92rem;
+    font-weight:600;
+    cursor:pointer;
+    font-family:inherit;
+    transition:transform .08s ease, filter .2s ease;
+  }
+  button.btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--accent);color:#06231f;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+  .btn-ghost:hover{border-color:var(--accent);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .caption{
+    margin-top:12px;
+    padding:12px 14px;
+    background:#0b1320;
+    border:1px solid var(--line);
+    border-left:3px solid var(--accent);
+    border-radius:8px;
+    font-size:.9rem;
+    color:var(--muted);
+  }
+  .caption b{color:var(--ink);}
+  .legend{
+    display:flex;gap:18px;flex-wrap:wrap;
+    margin-top:12px;font-size:.82rem;color:var(--muted);
+  }
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .swatch{width:14px;height:14px;border-radius:3px;display:inline-block;}
+  .orient-note{
+    margin-top:10px;font-size:.82rem;color:var(--muted);
+  }
+  .orient-note code{
+    background:#0b1320;border:1px solid var(--line);
+    border-radius:4px;padding:1px 6px;color:var(--accent);
+  }
+  /* ---- setup screen ---- */
+  .setup{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:26px 22px;
+    text-align:center;
+  }
+  .setup h2{
+    margin:0 0 6px;font-size:1.1rem;font-weight:700;
+  }
+  .setup .sub{
+    margin:0 auto 22px;color:var(--muted);font-size:.9rem;max-width:520px;
+  }
+  .karyo-grid{
+    display:flex;gap:16px;flex-wrap:wrap;justify-content:center;
+  }
+  .karyo-card{
+    flex:1 1 200px;
+    max-width:250px;
+    background:#0b1320;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px 14px 16px;
+    cursor:pointer;
+    transition:border-color .2s ease, transform .08s ease, box-shadow .2s ease;
+  }
+  .karyo-card:hover{
+    border-color:var(--accent);
+    box-shadow:0 0 0 1px var(--accent) inset;
+  }
+  .karyo-card:active{transform:translateY(1px);}
+  .karyo-card svg{background:transparent;margin-bottom:10px;}
+  .karyo-card .kname{font-weight:700;font-size:1.05rem;}
+  .karyo-card .kdesc{color:var(--muted);font-size:.82rem;margin-top:2px;}
+  .karyo-card .kcombo{color:var(--accent);font-size:.78rem;margin-top:8px;}
+  .reset-link{
+    background:transparent;border:none;color:var(--muted);
+    font-family:inherit;font-size:.82rem;cursor:pointer;
+    text-decoration:underline;padding:0;margin-left:auto;
+  }
+  .reset-link:hover{color:var(--accent);}
+  .controls .reset-link{margin-left:auto;}
+  .hidden{display:none !important;}
+  /* ---- genetics options ---- */
+  .genetics-panel{
+    margin-top:12px;
+    background:#0b1320;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 14px;
+    display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center;
+  }
+  .gp-row{display:flex;align-items:center;gap:10px;}
+  .gp-label{color:var(--muted);font-size:.86rem;font-weight:600;}
+  .switch{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-size:.88rem;}
+  .switch input{
+    appearance:none;width:38px;height:21px;border-radius:11px;
+    background:var(--line);position:relative;cursor:pointer;
+    transition:background .2s ease;flex:none;
+  }
+  .switch input::after{
+    content:"";position:absolute;top:3px;left:3px;
+    width:15px;height:15px;border-radius:50%;background:var(--muted);
+    transition:transform .2s ease, background .2s ease;
+  }
+  .switch input:checked{background:rgba(127,209,196,.35);}
+  .switch input:checked::after{transform:translateX(17px);background:var(--accent);}
+  .switch em{color:var(--muted);font-style:normal;font-size:.82rem;}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+  .seg-btn{
+    background:transparent;border:none;color:var(--muted);
+    font-family:inherit;font-size:.84rem;font-weight:600;
+    padding:7px 13px;cursor:pointer;transition:all .18s ease;
+  }
+  .seg-btn + .seg-btn{border-left:1px solid var(--line);}
+  .seg-btn:hover{color:var(--ink);}
+  .seg-btn.active{background:rgba(232,163,61,.16);color:var(--warn);}
+  .seg-btn[data-nd="none"].active{background:rgba(127,209,196,.16);color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Independent Assortment in Meiosis&nbsp;I</h1>
+    <p id="introText">Choose a cell below. Each tetrad orients itself randomly at the metaphase plate &mdash; and that orientation is carried <b>concordantly</b> through anaphase and into the two daughter cells. Crossing over is ignored.</p>
+  </header>
+
+  <!-- SETUP SCREEN -->
+  <div class="setup" id="setupScreen">
+    <h2>Pick a cell to start</h2>
+    <p class="sub">More chromosome pairs means more possible combinations &mdash; and a busier cell. Start small to see the pattern clearly.</p>
+    <div class="karyo-grid" id="karyoGrid"></div>
+  </div>
+
+  <!-- SIMULATION -->
+  <div id="simScreen" class="hidden">
+    <div class="stage-track" id="stageTrack"></div>
+
+    <div class="canvas-card">
+      <svg id="scene" viewBox="0 0 800 470" xmlns="http://www.w3.org/2000/svg" aria-label="Meiosis I simulation scene"></svg>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-ghost" id="prevBtn">&larr; Previous</button>
+      <button class="btn btn-primary" id="nextBtn">Next phase &rarr;</button>
+      <button class="btn btn-primary" id="playBtn">&#9654; Play through</button>
+      <button class="btn btn-ghost" id="shuffleBtn">&#10227; Shuffle alignment</button>
+      <button class="reset-link" id="resetBtn">Choose a different cell</button>
+    </div>
+
+    <!-- GENETICS OPTIONS -->
+    <div class="genetics-panel">
+      <div class="gp-row">
+        <label class="switch">
+          <input type="checkbox" id="xoToggle">
+          <span>Single crossing over event <em>(prophase I)</em></span>
+        </label>
+      </div>
+      <div class="gp-row">
+        <span class="gp-label">Nondisjunction:</span>
+        <div class="seg" id="ndSeg">
+          <button data-nd="none" class="seg-btn active">None</button>
+          <button data-nd="ndI"  class="seg-btn">Anaphase I</button>
+          <button data-nd="ndII" class="seg-btn">Anaphase II</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--red)"></i> Maternal homolog</span>
+      <span><i class="swatch" style="background:var(--blue)"></i> Paternal homolog</span>
+      <span><i class="swatch" style="background:linear-gradient(180deg,var(--blue) 45%,var(--red) 45%)"></i> Recombinant chromatid</span>
+      <span><i class="swatch" style="background:transparent;border:1.5px dashed var(--warn)"></i> Affected / missing</span>
+    </div>
+
+    <div class="orient-note">
+      Current random orientation (which homolog faces the <b>left</b> pole): <code id="orientReadout">—</code>
+      &nbsp;·&nbsp; This run is one of <code id="comboReadout">2&sup3; = 8</code> equally likely arrangements.
+      <br>Events this run: <code id="eventReadout">none</code>
+    </div>
+
+    <div class="caption" id="caption"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Independent Assortment — Meiosis I simulation
+   Three chromosome pairs. Each pair (tetrad) gets a random
+   orientation flag at metaphase. That flag drives:
+     - which side the red vs blue homolog sits in prophase
+     - the L/R arrangement on the metaphase plate
+     - which pole each homolog migrates to in anaphase
+     - which daughter cell each homolog ends in
+   keeping the pattern CONCORDANT across all phases.
+   ============================================================ */
+
+const NS = "http://www.w3.org/2000/svg";
+const scene = document.getElementById("scene");
+
+const PHASES = [
+  {key:"prophase",   num:"01", label:"Prophase I"},
+  {key:"metaphase",  num:"02", label:"Metaphase I"},
+  {key:"anaphase",   num:"03", label:"Anaphase I"},
+  {key:"telophase",  num:"04", label:"Cytokinesis I"},
+  {key:"metaphase2", num:"05", label:"Metaphase II"},
+  {key:"anaphase2",  num:"06", label:"Anaphase II"},
+  {key:"tetrad",     num:"07", label:"4 Haploid Cells"}
+];
+
+const CAPTIONS = {
+  prophase:  "<b>Prophase I.</b> Homologous chromosomes have paired into tetrads, scattered in the cell. Each tetrad shows one red (maternal) and one blue (paternal) homolog; which one sits on the left is decided randomly here.",
+  metaphase: "<b>Metaphase I.</b> The tetrads line up along the metaphase plate. The left/right orientation of each pair is independent of the others — this is independent assortment.",
+  anaphase:  "<b>Anaphase I.</b> Homologs separate. Whichever homolog faced a pole at metaphase migrates to that pole — the orientation is preserved exactly.",
+  telophase: "<b>Cytokinesis I.</b> Two haploid daughter cells form. Each receives one homolog from every pair, following the same orientation set at metaphase. The chromosomes are still replicated — sister chromatids remain joined.",
+  metaphase2:"<b>Metaphase II.</b> Both daughter cells divide in parallel. In each cell the still-replicated chromosomes line up on a new metaphase plate. No pairing happens now — there are no homologs left to pair.",
+  anaphase2: "<b>Anaphase II.</b> Sister chromatids finally separate and move to opposite poles in each cell. Each pole now receives single, unreplicated chromatids.",
+  tetrad:    "<b>Four haploid cells.</b> Cytokinesis II yields four haploid cells, each with one chromatid per chromosome. Because we ignored crossing over, the two cells from each meiosis-I daughter are genetically identical (bracketed pairs)."
+};
+
+// Distinct relative chromosome lengths, used in order. The first N are taken
+// for an N-pair cell so each chromosome reads as a different size.
+const SCALE_POOL = [1.00, 0.85, 0.70, 0.58];
+// Slightly smaller chromosomes when the cell is crowded (4 pairs).
+const SCALE_POOL_DENSE = [0.86, 0.74, 0.62, 0.52];
+
+// Karyotype options offered on the setup screen.
+const KARYOTYPES = [
+  {n:2, label:"2n = 4", desc:"2 pairs of chromosomes"},
+  {n:3, label:"2n = 6", desc:"3 pairs of chromosomes"},
+  {n:4, label:"2n = 8", desc:"4 pairs of chromosomes"}
+];
+
+let PAIRS = [];                 // active set of pairs, built on selection
+let pairCount = 3;              // chosen number of homologous pairs
+
+function buildPairs(n){
+  const pool = n>=4 ? SCALE_POOL_DENSE : SCALE_POOL;
+  return pool.slice(0, n).map(s => ({scale:s}));
+}
+
+let orientation = [];           // one flag per pair: 0 => red faces LEFT pole, 1 => blue
+let phaseIndex = 0;
+let playing = false;
+let playTimer = null;
+
+/* ---------- genetics options ---------- */
+let crossoverOn = false;        // single crossover in prophase I?
+let ndMode = "none";            // "none" | "ndI" | "ndII"
+let xoChrom  = 0;               // which chromosome crosses over (random each shuffle)
+let ndChrom  = 0;               // which chromosome misseggregates
+let ndCellII = 0;               // for ND II: which meiosis-II cell (0 = left, 1 = right)
+
+/* Homolog codes: 'R' = maternal (red), 'B' = paternal (paternal blue). */
+
+/* ============================================================
+   MODEL
+   For chromosome i, build its four chromatids:
+     mat = [c0, c1]  (two sisters of the RED homolog)
+     pat = [c0, c1]  (two sisters of the BLUE homolog)
+   A crossover swaps the TIPS of ONE maternal and ONE paternal
+   (non-sister) chromatid. That leaves, on that chromosome:
+     1 intact maternal, 1 intact paternal, 2 recombinants.
+   ============================================================ */
+function chromatidsFor(i){
+  const mat = [{base:'R',tip:'R'}, {base:'R',tip:'R'}];
+  const pat = [{base:'B',tip:'B'}, {base:'B',tip:'B'}];
+  if(crossoverOn && i===xoChrom){
+    // exchange distal tips between one maternal and one paternal chromatid
+    mat[1] = {base:'R', tip:'B'};   // recombinant: red body, blue tip
+    pat[0] = {base:'B', tip:'R'};   // recombinant: blue body, red tip
+  }
+  return {mat, pat};
+}
+
+/* Which homolog ('R' or 'B') faces the LEFT pole at metaphase I. */
+function leftHomolog(i){ return orientation[i]===0 ? 'R' : 'B'; }
+
+/* The homolog object (array of 2 chromatids) heading to a given
+   meiosis-I pole for chromosome i. side = 'L' | 'R'  */
+function homologToPole(i, side){
+  const {mat, pat} = chromatidsFor(i);
+  const leftIsRed = orientation[i]===0;
+  const goesLeft = leftIsRed ? mat : pat;
+  const goesRight= leftIsRed ? pat : mat;
+  return side==='L' ? goesLeft : goesRight;
+}
+
+/* ---- Nondisjunction I: chromosome ndChrom sends BOTH homologs to one
+   pole. We always send both to the LEFT pole for a predictable picture. */
+function ndI_bothToLeft(i){ return ndMode==="ndI" && i===ndChrom; }
+
+/* Contents of a meiosis-I daughter cell (after cytokinesis I).
+   Returns an array of entries {i, chromatids:[..]} — usually one
+   homolog per chromosome, but ND I can give 2 or 0. */
+function daughterContents(side){
+  const out = [];
+  PAIRS.forEach((pair,i)=>{
+    if(ndI_bothToLeft(i)){
+      if(side==='L'){
+        // both homologs land here
+        const {mat,pat} = chromatidsFor(i);
+        out.push({i, chromatids:mat, extra:true});
+        out.push({i, chromatids:pat, extra:true});
+      }
+      // right cell gets nothing for this chromosome (missing)
+      return;
+    }
+    out.push({i, chromatids: homologToPole(i, side)});
+  });
+  return out;
+}
+
+/* ============================================================
+   Meiosis II outcome: the four final cells.
+   Cells 0,1 derive from the LEFT meiosis-I daughter; 2,3 from RIGHT.
+   Normally each chromosome's two sisters split one to each cell.
+   ND II: in cell-pair `ndCellII`, chromosome ndChrom sends BOTH
+   sisters to the first of the two cells.
+   Returns: array of 4 cells, each an array of {i, spec} chromatids.
+   ============================================================ */
+function finalCells(){
+  const cells = [[],[],[],[]];
+  ['L','R'].forEach((side, s)=>{
+    const contents = daughterContents(side);
+    const a = s*2, b = s*2+1;    // the two cells produced by this daughter
+    contents.forEach(entry=>{
+      const {i, chromatids} = entry;
+      const ndHere = (ndMode==="ndII" && i===ndChrom && s===ndCellII);
+      if(ndHere){
+        // both sister chromatids go to cell `a`; cell `b` gets none
+        cells[a].push({i, spec:chromatids[0]});
+        cells[a].push({i, spec:chromatids[1], extra:true});
+      } else {
+        cells[a].push({i, spec:chromatids[0]});
+        cells[b].push({i, spec:chromatids[1]});
+      }
+    });
+  });
+  return cells;
+}
+
+/* ploidy label for a final cell, relative to n */
+function ploidyLabel(cell){
+  const n = PAIRS.length;
+  const count = cell.length;
+  if(count === n) return {txt:"n", ok:true};
+  const d = count - n;
+  return {txt: d>0 ? `n+${d}` : `n${d}`, ok:false};
+}
+
+/* ---------- random setup ---------- */
+function shuffleOrientation(){
+  orientation = PAIRS.map(()=> Math.random()<0.5 ? 0 : 1);
+  xoChrom = Math.floor(Math.random()*PAIRS.length);
+  ndChrom = Math.floor(Math.random()*PAIRS.length);
+  ndCellII = Math.random()<0.5 ? 0 : 1;
+  updateReadout();
+}
+function updateReadout(){
+  const txt = orientation.map(o => o===0 ? "R" : "B").join(" ");
+  document.getElementById("orientReadout").textContent = txt || "—";
+  const combos = Math.pow(2, PAIRS.length);
+  document.getElementById("comboReadout").innerHTML =
+    `2<sup>${PAIRS.length}</sup> = ${combos}`;
+  const el2 = document.getElementById("eventReadout");
+  if(el2){
+    const bits=[];
+    if(crossoverOn) bits.push(`crossover on chromosome ${xoChrom+1}`);
+    if(ndMode==="ndI")  bits.push(`nondisjunction at anaphase I (chromosome ${ndChrom+1})`);
+    if(ndMode==="ndII") bits.push(`nondisjunction at anaphase II (chromosome ${ndChrom+1})`);
+    el2.textContent = bits.length ? bits.join(" · ") : "none";
+  }
+}
+
+/* ============================================================
+   Chromosome drawing — a replicated chromosome (two sister
+   chromatids joined at a centromere), an "X" shape.
+   Each chromatid is a spec: {base:'R'|'B', tip:'R'|'B'}
+   A tip different from the base means that chromatid is RECOMBINANT.
+   ============================================================ */
+const ARM_W = 9, ARM_LEN = 42;
+
+// path for one chromatid blade, leaning by dx
+function bladePath(dx){
+  return `
+    M ${dx-ARM_W} ${-ARM_LEN}
+    C ${dx-ARM_W-2} ${-ARM_LEN*0.55} ${-ARM_W} -8 ${-2} -2
+    C ${-ARM_W} 8 ${dx-ARM_W-2} ${ARM_LEN*0.55} ${dx-ARM_W} ${ARM_LEN}
+    C ${dx} ${ARM_LEN+8} ${dx+ARM_W} ${ARM_LEN+8} ${dx+ARM_W} ${ARM_LEN}
+    C ${dx+ARM_W+2} ${ARM_LEN*0.55} ${ARM_W} 8 ${2} 2
+    C ${ARM_W} -8 ${dx+ARM_W+2} ${-ARM_LEN*0.55} ${dx+ARM_W} ${-ARM_LEN}
+    C ${dx} ${-ARM_LEN-8} ${dx-ARM_W} ${-ARM_LEN-8} ${dx-ARM_W} ${-ARM_LEN}
+    Z`;
+}
+
+// colour lookup from a code letter
+function colOf(code){
+  return code==='R'
+    ? {c:"var(--red)",  d:"var(--red-d)"}
+    : {c:"var(--blue)", d:"var(--blue-d)"};
+}
+
+let clipSeq = 0;   // unique ids for tip clip paths
+
+/* Draw a replicated chromosome. `chromatids` is a 2-element array of
+   {base,tip} specs — index 0 is the left-leaning blade, 1 the right. */
+function drawChromosome(parent, cx, cy, chromatids, scale, rot=0){
+  const g = document.createElementNS(NS,"g");
+  g.setAttribute("transform", `translate(${cx},${cy}) rotate(${rot}) scale(${scale})`);
+
+  const dxs = [-16, 16];
+  chromatids.forEach((spec, k)=>{
+    const dx = dxs[k];
+    const base = colOf(spec.base);
+    const d = bladePath(dx);
+
+    // base blade
+    const p = el("path",{d, fill:base.c, stroke:base.d, "stroke-width":"2"});
+    g.appendChild(p);
+
+    // recombinant? overlay the distal TIP segment in the other colour,
+    // clipped to the blade so it follows the arm shape exactly.
+    if(spec.tip && spec.tip !== spec.base){
+      const tip = colOf(spec.tip);
+      const id = `clip${++clipSeq}`;
+      const cp = el("clipPath",{id});
+      cp.appendChild(el("path",{d}));
+      g.appendChild(cp);
+      // the tip = the top portion of the blade (above the crossover point)
+      const cut = -ARM_LEN*0.42;   // where the exchange happened
+      const rect = el("rect",{
+        x:dx-ARM_W-6, y:-ARM_LEN-12,
+        width:(ARM_W+8)*2, height:(-ARM_LEN-12)*-1 + cut,
+        fill:tip.c, stroke:"none", "clip-path":`url(#${id})`
+      });
+      g.appendChild(rect);
+      // redraw the blade outline on top so the seam looks clean
+      g.appendChild(el("path",{d, fill:"none", stroke:base.d, "stroke-width":"2"}));
+      // a thin seam line at the exchange point
+      g.appendChild(el("line",{
+        x1:dx-ARM_W-1, y1:cut, x2:dx+ARM_W+1, y2:cut,
+        stroke:base.d, "stroke-width":"1.2", "stroke-opacity":"0.75",
+        "clip-path":`url(#${id})`
+      }));
+    }
+  });
+
+  // centromere — coloured by the base of the chromatids (they share it)
+  const cenStroke = colOf(chromatids[0].base).d;
+  g.appendChild(el("circle",{cx:0,cy:0,r:6.5,fill:"#f3e9ef",stroke:cenStroke,"stroke-width":"2"}));
+
+  parent.appendChild(g);
+  return g;
+}
+
+/* small helper: build an SVG element with attrs */
+function el(tag, attrs){
+  const e = document.createElementNS(NS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+/* ============================================================
+   Single (unreplicated) chromatid — one rod with a centromere.
+   Used after sister chromatids separate in meiosis II.
+   `spec` is {base:'R'|'B', tip:'R'|'B'} — a differing tip = recombinant.
+   ============================================================ */
+const ROD_W = 9, ROD_LEN = 42;
+function rodPath(){
+  return `
+    M ${-ROD_W} ${-ROD_LEN}
+    C ${-ROD_W-2} ${-ROD_LEN*0.55} ${-ROD_W+3} -6 ${-3} 0
+    C ${-ROD_W+3} 6 ${-ROD_W-2} ${ROD_LEN*0.55} ${-ROD_W} ${ROD_LEN}
+    C ${0} ${ROD_LEN+8} ${ROD_W} ${ROD_LEN+8} ${ROD_W} ${ROD_LEN}
+    C ${ROD_W+2} ${ROD_LEN*0.55} ${ROD_W-3} 6 ${3} 0
+    C ${ROD_W-3} -6 ${ROD_W+2} ${-ROD_LEN*0.55} ${ROD_W} ${-ROD_LEN}
+    C ${0} ${-ROD_LEN-8} ${-ROD_W} ${-ROD_LEN-8} ${-ROD_W} ${-ROD_LEN}
+    Z`;
+}
+function drawChromatid(parent, cx, cy, spec, scale, rot=0){
+  const g = document.createElementNS(NS,"g");
+  g.setAttribute("transform", `translate(${cx},${cy}) rotate(${rot}) scale(${scale})`);
+
+  const base = colOf(spec.base);
+  const d = rodPath();
+
+  g.appendChild(el("path",{d, fill:base.c, stroke:base.d, "stroke-width":"2"}));
+
+  // recombinant tip
+  if(spec.tip && spec.tip !== spec.base){
+    const tip = colOf(spec.tip);
+    const id = `rclip${++clipSeq}`;
+    const cp = el("clipPath",{id});
+    cp.appendChild(el("path",{d}));
+    g.appendChild(cp);
+    const cut = -ROD_LEN*0.42;
+    g.appendChild(el("rect",{
+      x:-ROD_W-6, y:-ROD_LEN-12,
+      width:(ROD_W+6)*2, height:(ROD_LEN+12) + cut,
+      fill:tip.c, stroke:"none", "clip-path":`url(#${id})`
+    }));
+    g.appendChild(el("path",{d, fill:"none", stroke:base.d, "stroke-width":"2"}));
+    g.appendChild(el("line",{
+      x1:-ROD_W-1, y1:cut, x2:ROD_W+1, y2:cut,
+      stroke:base.d, "stroke-width":"1.2","stroke-opacity":"0.75",
+      "clip-path":`url(#${id})`
+    }));
+  }
+
+  // centromere
+  g.appendChild(el("circle",{cx:0,cy:0,r:6.5,fill:"#f3e9ef",stroke:base.d,"stroke-width":"2"}));
+
+  parent.appendChild(g);
+  return g;
+}
+
+/* ---------- cell membrane shapes ---------- */
+function drawCircleCell(parent, cx, cy, r){
+  parent.appendChild(el("circle",{
+    cx,cy,r,
+    fill:"var(--cyto)", "fill-opacity":"0.10",
+    stroke:"var(--cyto-line)", "stroke-width":"3"
+  }));
+}
+
+/* a peanut / dumbbell membrane for anaphase (one cell elongating) */
+function drawPeanutCell(parent, cx, cy){
+  // two lobes joined by a pinched middle
+  const lobeR = 135, gap = 170;
+  const lx = cx-gap, rx = cx+gap;
+  const d = `
+    M ${lx} ${cy-lobeR}
+    A ${lobeR} ${lobeR} 0 1 0 ${lx} ${cy+lobeR}
+    Q ${cx-30} ${cy+55} ${cx} ${cy+40}
+    Q ${cx+30} ${cy+55} ${rx} ${cy+lobeR}
+    A ${lobeR} ${lobeR} 0 1 0 ${rx} ${cy-lobeR}
+    Q ${cx+30} ${cy-55} ${cx} ${cy-40}
+    Q ${cx-30} ${cy-55} ${lx} ${cy-lobeR}
+    Z`;
+  parent.appendChild(el("path",{
+    d, fill:"var(--cyto)", "fill-opacity":"0.10",
+    stroke:"var(--cyto-line)", "stroke-width":"3", "stroke-linejoin":"round"
+  }));
+}
+
+function drawOvalCell(parent, cx, cy, rx, ry){
+  parent.appendChild(el("ellipse",{
+    cx,cy,rx,ry,
+    fill:"var(--cyto)", "fill-opacity":"0.10",
+    stroke:"var(--cyto-line)", "stroke-width":"3"
+  }));
+}
+
+/* ============================================================
+   RENDER each phase
+   ============================================================ */
+function clearScene(){ while(scene.firstChild) scene.removeChild(scene.firstChild); }
+
+// Vertical band for the stacked rows, slightly taller when there are more pairs.
+function rowBand(n){
+  return n>=4 ? [95, 365] : [110, 350];
+}
+
+// Evenly distribute N rows within a vertical band [top, bottom].
+function rowPositions(n, top, bottom){
+  if(n===1) return [(top+bottom)/2];
+  const ys=[];
+  const step=(bottom-top)/(n-1);
+  for(let i=0;i<n;i++) ys.push(Math.round(top+step*i));
+  return ys;
+}
+
+// Scatter positions for prophase, spread around the cell centre but kept
+// inside the membrane. Generated per pair count so cells don't look empty/crowded.
+function scatterPositions(n){
+  // hand-tuned layouts that stay within the 205px-radius cell at (400,230)
+  const layouts = {
+    2:[ {x:330,y:165,tilt:-15}, {x:470,y:300,tilt:12} ],
+    3:[ {x:345,y:155,tilt:-16}, {x:325,y:330,tilt:13}, {x:500,y:280,tilt:-7} ],
+    4:[ {x:330,y:150,tilt:-15}, {x:500,y:165,tilt:10},
+        {x:305,y:315,tilt:8},   {x:495,y:320,tilt:-12} ]
+  };
+  return layouts[n] || layouts[3];
+}
+
+// red = maternal, blue = paternal
+function homologColor(isRed){
+  return isRed
+    ? {c:"var(--red)",  d:"var(--red-d)"}
+    : {c:"var(--blue)", d:"var(--blue-d)"};
+}
+
+/* a small chiasma marker (X) drawn over a tetrad that crossed over */
+function drawChiasma(parent, x, y, scale){
+  const r = 9*scale;
+  const g = el("g",{transform:`translate(${x},${y})`});
+  g.appendChild(el("circle",{cx:0,cy:0,r:r+3,fill:"var(--bg)","fill-opacity":"0.55",
+    stroke:"var(--accent)","stroke-width":"1.6"}));
+  g.appendChild(el("path",{d:`M ${-r*0.5} ${-r*0.5} L ${r*0.5} ${r*0.5}
+                              M ${r*0.5} ${-r*0.5} L ${-r*0.5} ${r*0.5}`,
+    stroke:"var(--accent)","stroke-width":"2","stroke-linecap":"round",fill:"none"}));
+  parent.appendChild(g);
+}
+
+/* PROPHASE I — tetrads scattered, random L/R, slight tilt */
+function renderProphase(){
+  drawCircleCell(scene, 400, 230, 205);
+
+  const spots = scatterPositions(PAIRS.length);
+
+  PAIRS.forEach((pair,i)=>{
+    const s = spots[i];
+    const g = el("g",{transform:`translate(${s.x},${s.y}) rotate(${s.tilt})`});
+    scene.appendChild(g);
+    const {mat, pat} = chromatidsFor(i);
+    const leftIsRed = orientation[i]===0;
+    const leftCh  = leftIsRed ? mat : pat;
+    const rightCh = leftIsRed ? pat : mat;
+    const dx = 34*pair.scale + 20;
+    drawChromosome(g, -dx, 0, leftCh,  pair.scale, -6);
+    drawChromosome(g,  dx, 0, rightCh, pair.scale,  6);
+    // mark the chiasma between the two homologs
+    if(crossoverOn && i===xoChrom){
+      drawChiasma(g, 0, -14*pair.scale, pair.scale);
+    }
+  });
+}
+
+/* METAPHASE I — tetrads stacked on the vertical metaphase plate */
+function renderMetaphase(){
+  drawCircleCell(scene, 400, 230, 205);
+
+  // dashed metaphase plate (vertical line through center)
+  scene.appendChild(el("line",{
+    x1:400, y1:55, x2:400, y2:405,
+    stroke:"var(--accent)", "stroke-width":"2",
+    "stroke-dasharray":"6 7", "stroke-opacity":"0.6"
+  }));
+
+  const [bt, bb] = rowBand(PAIRS.length);
+  const rowY = rowPositions(PAIRS.length, bt, bb);
+  PAIRS.forEach((pair,i)=>{
+    const y = rowY[i];
+    const {mat, pat} = chromatidsFor(i);
+    const leftIsRed = orientation[i]===0;
+    const leftCh  = leftIsRed ? mat : pat;
+    const rightCh = leftIsRed ? pat : mat;
+    // half-width of a drawn X is ~ (16 + armW) * scale; sit homologs so their
+    // inner chromatids nearly touch the plate
+    const dx = (16 + 9) * pair.scale + 4;
+    drawChromosome(scene, 400-dx, y, leftCh,  pair.scale, 0);
+    drawChromosome(scene, 400+dx, y, rightCh, pair.scale, 0);
+    // flag the chromosome that will misseggregate at anaphase I
+    if(ndMode==="ndI" && i===ndChrom) markND(scene, 400, y, 46*pair.scale);
+  });
+}
+
+/* a soft highlight ring flagging an affected chromosome */
+function markND(parent, x, y, r){
+  parent.appendChild(el("ellipse",{
+    cx:x, cy:y, rx:r+34, ry:r+6,
+    fill:"none", stroke:"var(--warn)", "stroke-width":"2",
+    "stroke-dasharray":"4 4", "stroke-opacity":"0.9"
+  }));
+}
+
+/* ANAPHASE I — homologs pulled to opposite poles, membrane elongating.
+   With ND I, the affected pair travels together to the LEFT pole. */
+function renderAnaphase(){
+  drawPeanutCell(scene, 400, 230);
+
+  const [bt, bb] = rowBand(PAIRS.length);
+  const rowY = rowPositions(PAIRS.length, bt, bb);
+  const leftPoleX  = 210;
+  const rightPoleX = 590;
+
+  PAIRS.forEach((pair,i)=>{
+    const y = rowY[i];
+    if(ndI_bothToLeft(i)){
+      // both homologs move to the LEFT pole, side by side; right pole gets none
+      const {mat, pat} = chromatidsFor(i);
+      const off = (16+9)*pair.scale + 6;
+      drawChromosome(scene, leftPoleX-off, y, mat, pair.scale, 0);
+      drawChromosome(scene, leftPoleX+off, y, pat, pair.scale, 0);
+      markND(scene, leftPoleX, y, 46*pair.scale);
+      return;
+    }
+    drawChromosome(scene, leftPoleX,  y, homologToPole(i,'L'), pair.scale, 0);
+    drawChromosome(scene, rightPoleX, y, homologToPole(i,'R'), pair.scale, 0);
+  });
+}
+
+/* AFTER CYTOKINESIS I — two daughter cells. ND I leaves one cell with an
+   extra chromosome and the other missing that chromosome entirely. */
+function renderTelophase(){
+  drawOvalCell(scene, 205, 230, 150, 195);
+  drawOvalCell(scene, 595, 230, 150, 195);
+
+  const [bt, bb] = rowBand(PAIRS.length);
+  const rowY = rowPositions(PAIRS.length, bt, bb);
+
+  [['L',205],['R',595]].forEach(([side, cx])=>{
+    PAIRS.forEach((pair,i)=>{
+      const y = rowY[i];
+      if(ndI_bothToLeft(i)){
+        if(side==='L'){
+          const {mat, pat} = chromatidsFor(i);
+          const off = (16+9)*pair.scale + 6;
+          drawChromosome(scene, cx-off, y, mat, pair.scale, 0);
+          drawChromosome(scene, cx+off, y, pat, pair.scale, 0);
+          markND(scene, cx, y, 46*pair.scale);
+        } else {
+          // missing chromosome — show a faint ghost outline
+          ghostSlot(scene, cx, y, pair.scale);
+        }
+        return;
+      }
+      drawChromosome(scene, cx, y, homologToPole(i, side), pair.scale, 0);
+    });
+  });
+}
+
+/* a dashed placeholder where a chromosome is absent */
+function ghostSlot(parent, x, y, scale){
+  parent.appendChild(el("ellipse",{
+    cx:x, cy:y, rx:26*scale, ry:50*scale,
+    fill:"none", stroke:"var(--warn)", "stroke-width":"1.6",
+    "stroke-dasharray":"3 5", "stroke-opacity":"0.55"
+  }));
+}
+
+/* ============================================================
+   MEIOSIS II
+   Two cells divide in parallel. The LEFT cell carries whichever
+   homolog went to the LEFT pole in meiosis I; the RIGHT cell
+   carries the rest. Sister chromatids line up and then separate.
+   With no crossing over, the two products of each cell are
+   identical — so the four final cells come in two matching pairs.
+   ============================================================ */
+
+
+/* METAPHASE II — each daughter cell aligns its chromosomes (still
+   replicated, sisters joined) in a column on its own VERTICAL metaphase
+   plate. ND I may leave a cell with an extra or a missing chromosome. */
+function renderMetaphase2(){
+  const cells = [{cx:205, side:'L'}, {cx:595, side:'R'}];
+  const n = PAIRS.length;
+  const [bt, bb] = rowBand(n);
+  const rowY = rowPositions(n, bt, bb);
+
+  cells.forEach((cell, s)=>{
+    drawOvalCell(scene, cell.cx, 230, 150, 195);
+    scene.appendChild(el("line",{
+      x1:cell.cx, y1:55, x2:cell.cx, y2:405,
+      stroke:"var(--accent)","stroke-width":"2",
+      "stroke-dasharray":"6 7","stroke-opacity":"0.55"
+    }));
+    PAIRS.forEach((pair,i)=>{
+      const y = rowY[i];
+      if(ndI_bothToLeft(i)){
+        if(cell.side==='L'){
+          const {mat, pat} = chromatidsFor(i);
+          const off = (16+9)*pair.scale + 6;
+          drawChromosome(scene, cell.cx-off, y, mat, pair.scale, 0);
+          drawChromosome(scene, cell.cx+off, y, pat, pair.scale, 0);
+          markND(scene, cell.cx, y, 46*pair.scale);
+        } else {
+          ghostSlot(scene, cell.cx, y, pair.scale);
+        }
+        return;
+      }
+      drawChromosome(scene, cell.cx, y, homologToPole(i, cell.side), pair.scale, 0);
+      // flag the chromosome that will fail to separate at anaphase II
+      if(ndMode==="ndII" && i===ndChrom && s===ndCellII){
+        markND(scene, cell.cx, y, 46*pair.scale);
+      }
+    });
+  });
+}
+
+/* ANAPHASE II — sister chromatids separate left/right in each cell.
+   ND II: in the affected cell, one chromosome's sisters both go LEFT. */
+function renderAnaphase2(){
+  const cells = [{cx:205, side:'L'}, {cx:595, side:'R'}];
+  const n = PAIRS.length;
+  const [bt, bb] = rowBand(n);
+  const rowY = rowPositions(n, bt, bb);
+  const xOff = 78;
+
+  cells.forEach((cell, s)=>{
+    drawOvalCell(scene, cell.cx, 230, 150, 195);
+    PAIRS.forEach((pair,i)=>{
+      const y = rowY[i];
+
+      // --- chromosome absent in this cell (ND I sent both to the other) ---
+      if(ndI_bothToLeft(i) && cell.side==='R'){
+        ghostSlot(scene, cell.cx-xOff, y, pair.scale);
+        ghostSlot(scene, cell.cx+xOff, y, pair.scale);
+        return;
+      }
+
+      // --- ND I gave this cell BOTH homologs: each splits normally ---
+      if(ndI_bothToLeft(i) && cell.side==='L'){
+        const {mat, pat} = chromatidsFor(i);
+        const o = 16*pair.scale + 6;
+        drawChromatid(scene, cell.cx-xOff-o, y, mat[0], pair.scale, 0);
+        drawChromatid(scene, cell.cx-xOff+o, y, pat[0], pair.scale, 0);
+        drawChromatid(scene, cell.cx+xOff-o, y, mat[1], pair.scale, 0);
+        drawChromatid(scene, cell.cx+xOff+o, y, pat[1], pair.scale, 0);
+        markND(scene, cell.cx, y, 46*pair.scale);
+        return;
+      }
+
+      const ch = homologToPole(i, cell.side);
+
+      // --- ND II: both sisters travel to the LEFT pole of this cell ---
+      if(ndMode==="ndII" && i===ndChrom && s===ndCellII){
+        const o = 15*pair.scale + 5;
+        drawChromatid(scene, cell.cx-xOff-o, y, ch[0], pair.scale, 0);
+        drawChromatid(scene, cell.cx-xOff+o, y, ch[1], pair.scale, 0);
+        ghostSlot(scene, cell.cx+xOff, y, pair.scale);
+        markND(scene, cell.cx, y, 46*pair.scale);
+        return;
+      }
+
+      // --- normal separation ---
+      drawChromatid(scene, cell.cx-xOff, y, ch[0], pair.scale, 0);
+      drawChromatid(scene, cell.cx+xOff, y, ch[1], pair.scale, 0);
+    });
+  });
+}
+
+/* FOUR HAPLOID CELLS — after cytokinesis II. Each holds single chromatids.
+   Labels show ploidy (n, n+1, n-1); brackets mark genuinely identical pairs. */
+function renderTetrad(){
+  const cx = [110, 305, 500, 695];
+  const ry = 150, cellRx = 88;
+  const cells = finalCells();
+  const n = PAIRS.length;
+  const [bt, bb] = rowBand(n);
+  const rowY = rowPositions(n, bt+20, bb-20);
+
+  cells.forEach((cell, c)=>{
+    const x = cx[c];
+    const ploidy = ploidyLabel(cell);
+    drawOvalCell(scene, x, 230, cellRx, ry);
+
+    // group this cell's chromatids by chromosome index so extras sit together
+    const byChrom = {};
+    cell.forEach(item=>{ (byChrom[item.i] ||= []).push(item); });
+
+    PAIRS.forEach((pair,i)=>{
+      const y = rowY[i];
+      const items = byChrom[i];
+      const s = pair.scale*0.92;
+      if(!items){                      // chromosome missing from this cell
+        ghostSlot(scene, x, y, s);
+        return;
+      }
+      if(items.length===1){
+        drawChromatid(scene, x, y, items[0].spec, s, 0);
+      } else {                         // an extra copy (n+1)
+        const o = 15*s + 6;
+        drawChromatid(scene, x-o, y, items[0].spec, s, 0);
+        drawChromatid(scene, x+o, y, items[1].spec, s, 0);
+        markND(scene, x, y, 40*s);
+      }
+    });
+
+    // ploidy label under each cell
+    const t = el("text",{x, y:400, "text-anchor":"middle",
+      fill: ploidy.ok ? "var(--accent)" : "var(--warn)",
+      "font-size":"15","font-weight":"700","font-family":"inherit"});
+    t.textContent = ploidy.txt;
+    scene.appendChild(t);
+  });
+
+  // "identical" brackets only where the two sister products really match
+  function tag(x1,x2,txt,color){
+    const my = 424, midx=(x1+x2)/2;
+    scene.appendChild(el("path",{
+      d:`M ${x1} ${my-8} L ${x1} ${my} L ${x2} ${my} L ${x2} ${my-8}`,
+      fill:"none", stroke:color, "stroke-width":"1.5","stroke-opacity":"0.75"
+    }));
+    const t = el("text",{x:midx, y:my+16, "text-anchor":"middle",
+      fill:color,"font-size":"13","font-family":"inherit"});
+    t.textContent = txt;
+    scene.appendChild(t);
+  }
+  // a half is "identical" only if no crossover and no ND touched it
+  [0,1].forEach(half=>{
+    const a = cells[half*2], b = cells[half*2+1];
+    const sameCount = a.length===b.length && a.length===n;
+    const noXO = !crossoverOn;
+    const ndTouched = (ndMode==="ndI") ||
+                      (ndMode==="ndII" && half===ndCellII);
+    const identical = sameCount && noXO && !ndTouched;
+    tag(cx[half*2]-46, cx[half*2+1]+46,
+        identical ? "identical" : "all different",
+        identical ? "var(--accent)" : "var(--muted)");
+  });
+
+  // summary line: normal vs abnormal gametes
+  const abnormal = cells.filter(c=>c.length!==n).length;
+  const msg = abnormal===0
+    ? `all 4 gametes normal (n = ${n})`
+    : `${4-abnormal} normal · ${abnormal} aneuploid`;
+  const st = el("text",{x:400, y:454, "text-anchor":"middle",
+    fill: abnormal? "var(--warn)":"var(--accent)",
+    "font-size":"14","font-weight":"600","font-family":"inherit"});
+  st.textContent = msg;
+  scene.appendChild(st);
+}
+
+const RENDERERS = {
+  prophase:renderProphase,
+  metaphase:renderMetaphase,
+  anaphase:renderAnaphase,
+  telophase:renderTelophase,
+  metaphase2:renderMetaphase2,
+  anaphase2:renderAnaphase2,
+  tetrad:renderTetrad
+};
+
+/* ============================================================
+   UI plumbing
+   ============================================================ */
+function render(){
+  clearScene();
+  const key = PHASES[phaseIndex].key;
+  RENDERERS[key]();
+  document.getElementById("caption").innerHTML = captionFor(key);
+  document.querySelectorAll(".stage-pill").forEach((p,idx)=>{
+    p.classList.toggle("active", idx===phaseIndex);
+  });
+  document.getElementById("prevBtn").disabled = phaseIndex===0;
+  document.getElementById("nextBtn").disabled = phaseIndex===PHASES.length-1;
+}
+
+/* caption + any extra note for the active genetics options */
+function captionFor(key){
+  let txt = CAPTIONS[key];
+  const c = xoChrom+1, d = ndChrom+1;
+  const notes = [];
+
+  if(crossoverOn && key==="prophase"){
+    notes.push(`<b>Crossing over:</b> a chiasma has formed on chromosome ${c}. ` +
+      `Only <b>two</b> of its four chromatids — one maternal, one paternal — exchange ` +
+      `tips. The other two stay parental.`);
+  }
+  if(crossoverOn && key==="tetrad"){
+    notes.push(`Because chromosome ${c} crossed over, its sister chromatids were no ` +
+      `longer identical, so <b>all four cells differ</b> — the hallmark of recombination.`);
+  }
+  if(ndMode==="ndI" && (key==="anaphase"||key==="metaphase")){
+    notes.push(`<b>Nondisjunction (anaphase I):</b> the homologous pair of chromosome ${d} ` +
+      `fails to separate. Both homologs travel to the same pole.`);
+  }
+  if(ndMode==="ndI" && key==="tetrad"){
+    notes.push(`Nondisjunction at anaphase I makes <b>all four</b> gametes aneuploid: ` +
+      `two n+1 and two n&minus;1.`);
+  }
+  if(ndMode==="ndII" && (key==="metaphase2"||key==="anaphase2")){
+    notes.push(`<b>Nondisjunction (anaphase II):</b> in one cell the sister chromatids of ` +
+      `chromosome ${d} fail to separate and both go to the same pole.`);
+  }
+  if(ndMode==="ndII" && key==="tetrad"){
+    notes.push(`Nondisjunction at anaphase II affects only one of the two dividing cells, ` +
+      `so <b>two gametes are normal</b> while one is n+1 and one is n&minus;1.`);
+  }
+  if(notes.length) txt += `<br><br>` + notes.join("<br><br>");
+  return txt;
+}
+
+function buildTrack(){
+  const track = document.getElementById("stageTrack");
+  PHASES.forEach((ph,idx)=>{
+    const pill = document.createElement("div");
+    pill.className="stage-pill";
+    pill.innerHTML = `<span class="num">${ph.num}</span>${ph.label}`;
+    pill.addEventListener("click", ()=>{ stopPlay(); phaseIndex=idx; render(); });
+    track.appendChild(pill);
+  });
+}
+
+function next(){ if(phaseIndex<PHASES.length-1){ phaseIndex++; render(); } }
+function prev(){ if(phaseIndex>0){ phaseIndex--; render(); } }
+
+function stopPlay(){
+  playing=false;
+  if(playTimer){ clearInterval(playTimer); playTimer=null; }
+  document.getElementById("playBtn").innerHTML = "&#9654; Play through";
+}
+
+function playThrough(){
+  if(playing){ stopPlay(); return; }
+  // fresh shuffle, start at prophase
+  shuffleOrientation();
+  phaseIndex=0; render();
+  playing=true;
+  document.getElementById("playBtn").innerHTML = "&#10073;&#10073; Stop";
+  playTimer = setInterval(()=>{
+    if(phaseIndex<PHASES.length-1){ phaseIndex++; render(); }
+    else { stopPlay(); }
+  }, 1400);
+}
+
+document.getElementById("nextBtn").addEventListener("click",()=>{ stopPlay(); next(); });
+document.getElementById("prevBtn").addEventListener("click",()=>{ stopPlay(); prev(); });
+document.getElementById("playBtn").addEventListener("click", playThrough);
+document.getElementById("shuffleBtn").addEventListener("click",()=>{
+  stopPlay(); shuffleOrientation(); phaseIndex=0; render();
+});
+document.getElementById("resetBtn").addEventListener("click", goToSetup);
+
+/* ---- genetics option handlers ---- */
+document.getElementById("xoToggle").addEventListener("change", e=>{
+  stopPlay();
+  crossoverOn = e.target.checked;
+  updateReadout();
+  render();
+});
+document.getElementById("ndSeg").addEventListener("click", e=>{
+  const btn = e.target.closest(".seg-btn");
+  if(!btn) return;
+  stopPlay();
+  ndMode = btn.dataset.nd;
+  document.querySelectorAll("#ndSeg .seg-btn").forEach(b=>
+    b.classList.toggle("active", b===btn));
+  updateReadout();
+  render();
+});
+
+/* ============================================================
+   Setup screen
+   ============================================================ */
+// small static preview: N tetrads (red+blue X pairs) in a cell outline
+function karyoPreview(n){
+  const w=180, h=120, cx=w/2, cy=h/2;
+  const ys = (function(){
+    if(n===2) return [42,78];
+    if(n===3) return [34,60,86];
+    return [30,52,74,96];
+  })();
+  let inner = `<ellipse cx="${cx}" cy="${cy}" rx="78" ry="52"
+      fill="var(--cyto)" fill-opacity="0.10" stroke="var(--cyto-line)" stroke-width="2"/>`;
+  const scales = (n>=4 ? SCALE_POOL_DENSE : SCALE_POOL).slice(0,n);
+  ys.forEach((y,i)=>{
+    const s = 0.34*scales[i];
+    inner += miniX(cx-16, y, "var(--red)","var(--red-d)", s);
+    inner += miniX(cx+16, y, "var(--blue)","var(--blue-d)", s);
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" width="180" height="120"
+            xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+}
+// a compact X glyph for the previews
+function miniX(cx,cy,fill,stroke,s){
+  const a = 42*s, w = 9*s, off = 16*s;
+  function blade(dx){
+    return `<path d="
+      M ${cx+dx-w} ${cy-a}
+      C ${cx+dx-w} ${cy-a*0.55} ${cx-w} ${cy-8*s} ${cx-2*s} ${cy-2*s}
+      C ${cx-w} ${cy+8*s} ${cx+dx-w} ${cy+a*0.55} ${cx+dx-w} ${cy+a}
+      C ${cx+dx} ${cy+a+8*s} ${cx+dx+w} ${cy+a+8*s} ${cx+dx+w} ${cy+a}
+      C ${cx+dx+w} ${cy+a*0.55} ${cx+w} ${cy+8*s} ${cx+2*s} ${cy+2*s}
+      C ${cx+w} ${cy-8*s} ${cx+dx+w} ${cy-a*0.55} ${cx+dx+w} ${cy-a}
+      C ${cx+dx} ${cy-a-8*s} ${cx+dx-w} ${cy-a-8*s} ${cx+dx-w} ${cy-a} Z"
+      fill="${fill}" stroke="${stroke}" stroke-width="${1.4}"/>`;
+  }
+  const cenR = 3.4*s;
+  return blade(-10*s) + blade(10*s) +
+    `<circle cx="${cx}" cy="${cy}" r="${cenR}" fill="#f3e9ef" stroke="${stroke}" stroke-width="1.2"/>`;
+}
+
+function buildSetup(){
+  const grid = document.getElementById("karyoGrid");
+  grid.innerHTML="";
+  KARYOTYPES.forEach(k=>{
+    const combos = Math.pow(2,k.n);
+    const card = document.createElement("div");
+    card.className="karyo-card";
+    card.setAttribute("role","button");
+    card.setAttribute("tabindex","0");
+    card.innerHTML =
+      karyoPreview(k.n) +
+      `<div class="kname">${k.label}</div>` +
+      `<div class="kdesc">${k.desc}</div>` +
+      `<div class="kcombo">2<sup>${k.n}</sup> = ${combos} possible cells</div>`;
+    const choose = ()=> startSim(k.n);
+    card.addEventListener("click", choose);
+    card.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); choose(); }});
+    grid.appendChild(card);
+  });
+}
+
+let trackBuilt = false;
+function startSim(n){
+  pairCount = n;
+  PAIRS = buildPairs(n);
+  if(!trackBuilt){ buildTrack(); trackBuilt=true; }
+  shuffleOrientation();
+  phaseIndex = 0;
+  document.getElementById("setupScreen").classList.add("hidden");
+  document.getElementById("simScreen").classList.remove("hidden");
+  document.getElementById("introText").innerHTML =
+    `A simplified diploid cell with <b>${n} chromosome pair${n>1?"s":""}</b> (2n = ${2*n}). ` +
+    `Each tetrad orients itself randomly at metaphase I &mdash; and that orientation is ` +
+    `carried <b>concordantly</b> all the way to the <b>four haploid cells</b>. ` +
+    `Crossing over is ignored.`;
+  render();
+}
+
+function goToSetup(){
+  stopPlay();
+  document.getElementById("simScreen").classList.add("hidden");
+  document.getElementById("setupScreen").classList.remove("hidden");
+  document.getElementById("introText").innerHTML =
+    `Choose a cell below. Each tetrad orients itself randomly at the metaphase plate &mdash; ` +
+    `and that orientation is carried <b>concordantly</b> through anaphase and into the two ` +
+    `daughter cells. Crossing over is ignored.`;
+}
+
+/* init */
+buildSetup();
+
+</script>
+</body>
+</html>
