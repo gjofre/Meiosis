@@ -255,7 +255,7 @@
 <div class="wrap">
   <header>
     <h1>Visualizing Important Meiosis Processes</h1>
-    <p id="introText">Choose a cell below. Each tetrad orients itself randomly at the metaphase plate &mdash; and that orientation is carried <b>concordantly</b> through anaphase and into the two daughter cells. For simplicity, <b>prometaphase I</b> is included within prophase I, and <b>prophase II</b> is not shown.</p>
+    <p id="introText">Choose a cell below. Each tetrad orients itself randomly at the metaphase plate &mdash; and that orientation is carried <b>concordantly</b> through anaphase and into the two daughter cells. For simplicity, <b>prometaphase</b> is included within prophase in both divisions.</p>
   </header>
 
 <main id="mainContent">
@@ -349,9 +349,10 @@ const PHASES = [
   {key:"metaphase",  num:"02", label:"Metaphase I"},
   {key:"anaphase",   num:"03", label:"Anaphase I"},
   {key:"telophase",  num:"04", label:"Cytokinesis I"},
-  {key:"metaphase2", num:"05", label:"Metaphase II"},
-  {key:"anaphase2",  num:"06", label:"Anaphase II"},
-  {key:"tetrad",     num:"07", label:"4 Haploid Cells"}
+  {key:"prophase2",  num:"05", label:"Prophase II"},
+  {key:"metaphase2", num:"06", label:"Metaphase II"},
+  {key:"anaphase2",  num:"07", label:"Anaphase II"},
+  {key:"tetrad",     num:"08", label:"4 Haploid Cells"}
 ];
 
 const CAPTIONS = {
@@ -359,6 +360,7 @@ const CAPTIONS = {
   metaphase: "<b>Metaphase I.</b> The tetrads line up along the metaphase plate. The left/right orientation of each pair is independent of the others — this is independent assortment.",
   anaphase:  "<b>Anaphase I.</b> Homologs separate. Whichever homolog faced a pole at metaphase migrates to that pole — the orientation is preserved exactly.",
   telophase: "<b>Cytokinesis I.</b> Two haploid daughter cells form. Each receives one homolog from every pair, following the same orientation set at metaphase. The chromosomes are still replicated — sister chromatids remain joined.",
+  prophase2: "<b>Prophase II.</b> Each daughter cell begins the second division. Its chromosomes are still replicated — sister chromatids joined — and sit scattered in the cell while two centrosomes start to migrate apart. Note what does <b>not</b> happen: no pairing (no homologs are left to pair) and no DNA replication between the two divisions.",
   metaphase2:"<b>Metaphase II.</b> Both daughter cells divide in parallel. In each cell the still-replicated chromosomes line up on a new metaphase plate. No pairing happens now — there are no homologs left to pair.",
   anaphase2: "<b>Anaphase II.</b> Sister chromatids finally separate and move to opposite poles in each cell. Each pole now receives single, unreplicated chromatids.",
   tetrad:    "<b>Four haploid cells.</b> Cytokinesis II yields four haploid cells, each with one chromatid per chromosome. Without crossing over, the two cells from each meiosis-I daughter are genetically identical; the brackets below show which pairs match in this run."
@@ -987,6 +989,80 @@ function ghostSlot(parent, x, y, scale){
 }
 
 /* ============================================================
+   PROPHASE II — the two daughter cells each start the second
+   division: still-replicated chromosomes scattered in the cell,
+   and two centrosomes that have not finished migrating apart.
+   ============================================================ */
+
+/* Scatter slots inside a daughter cell, as offsets from its centre. */
+function daughterScatter(n){
+  const layouts = {
+    1:[ {dx:-10, dy:-20, tilt:-10} ],
+    2:[ {dx:-55, dy:-85, tilt:-12}, {dx: 45, dy: 70, tilt: 10} ],
+    3:[ {dx:-50, dy:-95, tilt:-14}, {dx: 55, dy:-30, tilt:  9},
+        {dx:-30, dy: 80, tilt: 12} ],
+    4:[ {dx:-55, dy:-100,tilt:-12}, {dx: 50, dy:-55, tilt: 10},
+        {dx:-45, dy: 45, tilt: 13}, {dx: 55, dy: 95, tilt: -9} ]
+  };
+  return layouts[n] || layouts[4];
+}
+
+/* Pull a point toward the cell centre until a box of half-size w x h
+   centred on it sits comfortably inside the ellipse. */
+function fitInOval(dx, dy, w, h, rx, ry){
+  let k = 1;
+  for(let t=0; t<30; t++){
+    const v = Math.pow((Math.abs(dx*k)+w)/rx, 2) + Math.pow((Math.abs(dy*k)+h)/ry, 2);
+    if(v <= 0.93) break;
+    k *= 0.94;
+  }
+  return {x:dx*k, y:dy*k};
+}
+
+/* Centrosome offsets in a daughter cell — deliberately NOT yet aligned. */
+const P2_POLES = [{dx:-118, dy: 42}, {dx: 118, dy:-42}];
+
+function renderProphase2(){
+  const cells = [{cx:205, side:'L'}, {cx:595, side:'R'}];
+  const RX = 150, RY = 195;
+  const slots = daughterScatter(PAIRS.length);
+
+  cells.forEach(cell=>{
+    drawOvalCell(scene, cell.cx, 230, RX, RY);
+
+    const spindle = spindleLayer();
+    P2_POLES.forEach(p=>{
+      drawPole(spindle, cell.cx+p.dx, 230+p.dy, Math.atan2(p.dy, p.dx));
+    });
+
+    PAIRS.forEach((pair,i)=>{
+      const s = pair.scale, slot = slots[i];
+      const w = (16+ARM_W)*s, h = (ARM_LEN+8)*s;
+
+      if(ndI_bothToLeft(i)){
+        if(cell.side==='L'){
+          // this cell received BOTH homologs of chromosome i
+          const off = (16+ARM_W)*s + 6;
+          const at = fitInOval(slot.dx, slot.dy, w+off, h, RX, RY);
+          const {mat, pat} = chromatidsFor(i);
+          drawChromosome(scene, cell.cx+at.x-off, 230+at.y, mat, s, slot.tilt);
+          drawChromosome(scene, cell.cx+at.x+off, 230+at.y, pat, s, slot.tilt);
+          markND(scene, cell.cx+at.x, 230+at.y, 46*s);
+        } else {
+          const at = fitInOval(slot.dx, slot.dy, w, h, RX, RY);
+          ghostSlot(scene, cell.cx+at.x, 230+at.y, s);
+        }
+        return;
+      }
+
+      const at = fitInOval(slot.dx, slot.dy, w, h, RX, RY);
+      drawChromosome(scene, cell.cx+at.x, 230+at.y,
+                     homologToPole(i, cell.side), s, slot.tilt);
+    });
+  });
+}
+
+/* ============================================================
    MEIOSIS II
    Two cells divide in parallel. The LEFT cell carries whichever
    homolog went to the LEFT pole in meiosis I; the RIGHT cell
@@ -1194,6 +1270,7 @@ const RENDERERS = {
   metaphase:renderMetaphase,
   anaphase:renderAnaphase,
   telophase:renderTelophase,
+  prophase2:renderProphase2,
   metaphase2:renderMetaphase2,
   anaphase2:renderAnaphase2,
   tetrad:renderTetrad
@@ -1274,6 +1351,7 @@ function describeScene(key){
         `Toward the right pole, ${right}.`;
     }
     case "telophase":
+    case "prophase2":
     case "metaphase2": {
       const halves = ['L','R'].map((side,s)=>{
         const items = daughterContents(side).map(e=>({i:e.i, spec:e.chromatids[0]}));
@@ -1281,9 +1359,13 @@ function describeScene(key){
       }).join(". ");
       const lead = key==="telophase"
         ? `Two haploid daughter cells, each chromosome still replicated as two sister chromatids. `
-        : `Both daughter cells have lined their replicated chromosomes up on their own metaphase ` +
-          `plate, each cell with its own spindle linking the two sister kinetochores of every ` +
-          `chromosome to opposite poles. `;
+        : key==="prophase2"
+          ? `Both daughter cells are starting the second division. Their chromosomes are still ` +
+            `replicated and lie scattered in the cell, and each cell has two centrosomes that ` +
+            `have not finished migrating apart. No DNA was replicated between the divisions. `
+          : `Both daughter cells have lined their replicated chromosomes up on their own metaphase ` +
+            `plate, each cell with its own spindle linking the two sister kinetochores of every ` +
+            `chromosome to opposite poles. `;
       return lead + halves + "." +
         (key==="metaphase2" && ndMode==="ndII"
           ? ` In the ${ndCellII===0?"left":"right"} cell, chromosome ${ndChrom+1} is flagged; its sister chromatids will fail to separate.`
@@ -1501,8 +1583,7 @@ function startSim(n){
     `A simplified diploid cell with <b>${n} chromosome pair${n>1?"s":""}</b> (2n = ${2*n}). ` +
     `Each tetrad orients itself randomly at metaphase I &mdash; and that orientation is ` +
     `carried <b>concordantly</b> all the way to the <b>four haploid cells</b>. ` +
-    `For simplicity, <b>prometaphase I</b> is included within prophase I, and ` +
-    `<b>prophase II</b> is not shown.`;
+    `For simplicity, <b>prometaphase</b> is included within prophase in both divisions.`;
   render();
   // move keyboard focus into the simulation that just appeared
   const first = document.querySelector("#stageTrack .stage-pill");
@@ -1516,8 +1597,8 @@ function goToSetup(){
   document.getElementById("introText").innerHTML =
     `Choose a cell below. Each tetrad orients itself randomly at the metaphase plate &mdash; ` +
     `and that orientation is carried <b>concordantly</b> through anaphase and into the two ` +
-    `daughter cells. For simplicity, <b>prometaphase I</b> is included within prophase I, ` +
-    `and <b>prophase II</b> is not shown.`;
+    `daughter cells. For simplicity, <b>prometaphase</b> is included within prophase in ` +
+    `both divisions.`;
   const first = document.querySelector("#karyoGrid .karyo-card");
   if(first) first.focus();
 }
