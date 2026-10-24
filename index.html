@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Independent Assortment in Meiosis I</title>
+<title>Visualizing Important Meiosis Processes</title>
 <style>
   :root{
     --bg:#0f1724;
@@ -59,6 +59,7 @@
     color:var(--muted);
     font-size:.8rem;
     font-weight:600;
+    font-family:inherit;
     cursor:pointer;
     transition:all .25s ease;
     user-select:none;
@@ -75,6 +76,33 @@
     color:var(--ink);
     border-color:var(--accent);
     box-shadow:0 0 0 1px var(--accent) inset;
+  }
+  /* ---- accessibility helpers ---- */
+  .visually-hidden{
+    position:absolute !important;
+    width:1px;height:1px;
+    margin:-1px;padding:0;border:0;
+    clip:rect(0 0 0 0);clip-path:inset(50%);
+    overflow:hidden;white-space:nowrap;
+  }
+  :focus-visible{
+    outline:3px solid var(--accent);
+    outline-offset:2px;
+    border-radius:4px;
+  }
+  .skip-link{
+    position:absolute;left:-9999px;top:0;
+    background:var(--accent);color:#06231f;
+    padding:10px 16px;border-radius:0 0 8px 0;
+    font-weight:700;text-decoration:none;z-index:10;
+  }
+  .skip-link:focus{left:0;}
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{
+      transition-duration:.01ms !important;
+      animation-duration:.01ms !important;
+      animation-iteration-count:1 !important;
+    }
   }
   .canvas-card{
     background:var(--panel);
@@ -151,6 +179,11 @@
   .karyo-card{
     flex:1 1 200px;
     max-width:250px;
+    width:100%;
+    font-family:inherit;
+    color:var(--ink);
+    text-align:center;
+    display:block;
     background:#0b1320;
     border:1px solid var(--line);
     border-radius:14px;
@@ -164,9 +197,9 @@
   }
   .karyo-card:active{transform:translateY(1px);}
   .karyo-card svg{background:transparent;margin-bottom:10px;}
-  .karyo-card .kname{font-weight:700;font-size:1.05rem;}
-  .karyo-card .kdesc{color:var(--muted);font-size:.82rem;margin-top:2px;}
-  .karyo-card .kcombo{color:var(--accent);font-size:.78rem;margin-top:8px;}
+  .karyo-card .kname{display:block;font-weight:700;font-size:1.05rem;}
+  .karyo-card .kdesc{display:block;color:var(--muted);font-size:.82rem;margin-top:2px;}
+  .karyo-card .kcombo{display:block;color:var(--accent);font-size:.78rem;margin-top:8px;}
   .reset-link{
     background:transparent;border:none;color:var(--muted);
     font-family:inherit;font-size:.82rem;cursor:pointer;
@@ -175,6 +208,11 @@
   .reset-link:hover{color:var(--accent);}
   .controls .reset-link{margin-left:auto;}
   .hidden{display:none !important;}
+  .site-footer{
+    margin-top:28px;padding-top:14px;
+    border-top:1px solid var(--line);
+    text-align:center;font-size:.8rem;color:var(--muted);
+  }
   /* ---- genetics options ---- */
   .genetics-panel{
     margin-top:12px;
@@ -213,12 +251,14 @@
 </style>
 </head>
 <body>
+<a class="skip-link" href="#mainContent">Skip to the simulation</a>
 <div class="wrap">
   <header>
-    <h1>Independent Assortment in Meiosis&nbsp;I</h1>
-    <p id="introText">Choose a cell below. Each tetrad orients itself randomly at the metaphase plate &mdash; and that orientation is carried <b>concordantly</b> through anaphase and into the two daughter cells. Crossing over is ignored.</p>
+    <h1>Visualizing Important Meiosis Processes</h1>
+    <p id="introText">Choose a cell below. Each tetrad orients itself randomly at the metaphase plate &mdash; and that orientation is carried <b>concordantly</b> through anaphase and into the two daughter cells. For simplicity, <b>prometaphase I</b> is included within prophase I, and <b>prophase II</b> is not shown.</p>
   </header>
 
+<main id="mainContent">
   <!-- SETUP SCREEN -->
   <div class="setup" id="setupScreen">
     <h2>Pick a cell to start</h2>
@@ -228,18 +268,22 @@
 
   <!-- SIMULATION -->
   <div id="simScreen" class="hidden">
-    <div class="stage-track" id="stageTrack"></div>
+    <h2 class="visually-hidden">Meiosis simulation</h2>
+    <nav class="stage-track" id="stageTrack" aria-label="Phases of meiosis"></nav>
 
     <div class="canvas-card">
-      <svg id="scene" viewBox="0 0 800 470" xmlns="http://www.w3.org/2000/svg" aria-label="Meiosis I simulation scene"></svg>
+      <svg id="scene" viewBox="0 0 800 470" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"></svg>
     </div>
 
+    <!-- text equivalent of the drawing, announced on every change -->
+    <div class="visually-hidden" id="sceneDesc" role="status" aria-live="polite"></div>
+
     <div class="controls">
-      <button class="btn btn-ghost" id="prevBtn">&larr; Previous</button>
-      <button class="btn btn-primary" id="nextBtn">Next phase &rarr;</button>
-      <button class="btn btn-primary" id="playBtn">&#9654; Play through</button>
-      <button class="btn btn-ghost" id="shuffleBtn">&#10227; Shuffle alignment</button>
-      <button class="reset-link" id="resetBtn">Choose a different cell</button>
+      <button type="button" class="btn btn-ghost" id="prevBtn"><span aria-hidden="true">&larr;</span> Previous phase</button>
+      <button type="button" class="btn btn-primary" id="nextBtn">Next phase <span aria-hidden="true">&rarr;</span></button>
+      <button type="button" class="btn btn-primary" id="playBtn" aria-pressed="false"><span aria-hidden="true">&#9654;</span> Play through</button>
+      <button type="button" class="btn btn-ghost" id="shuffleBtn"><span aria-hidden="true">&#10227;</span> Shuffle alignment</button>
+      <button type="button" class="reset-link" id="resetBtn">Choose a different cell</button>
     </div>
 
     <!-- GENETICS OPTIONS -->
@@ -250,31 +294,38 @@
           <span>Single crossing over event <em>(prophase I)</em></span>
         </label>
       </div>
-      <div class="gp-row">
-        <span class="gp-label">Nondisjunction:</span>
+      <div class="gp-row" role="group" aria-labelledby="ndLabel">
+        <span class="gp-label" id="ndLabel">Nondisjunction:</span>
         <div class="seg" id="ndSeg">
-          <button data-nd="none" class="seg-btn active">None</button>
-          <button data-nd="ndI"  class="seg-btn">Anaphase I</button>
-          <button data-nd="ndII" class="seg-btn">Anaphase II</button>
+          <button type="button" data-nd="none" class="seg-btn active" aria-pressed="true">None</button>
+          <button type="button" data-nd="ndI"  class="seg-btn" aria-pressed="false">Anaphase I</button>
+          <button type="button" data-nd="ndII" class="seg-btn" aria-pressed="false">Anaphase II</button>
         </div>
       </div>
     </div>
 
+    <h3 class="visually-hidden">Key to the colors used in the drawing</h3>
     <div class="legend">
-      <span><i class="swatch" style="background:var(--red)"></i> Maternal homolog</span>
-      <span><i class="swatch" style="background:var(--blue)"></i> Paternal homolog</span>
-      <span><i class="swatch" style="background:linear-gradient(180deg,var(--blue) 45%,var(--red) 45%)"></i> Recombinant chromatid</span>
-      <span><i class="swatch" style="background:transparent;border:1.5px dashed var(--warn)"></i> Affected / missing</span>
+      <span><i class="swatch" aria-hidden="true" style="background:var(--red)"></i> Maternal homolog (<b>M</b> at the centromere)</span>
+      <span><i class="swatch" aria-hidden="true" style="background:var(--blue)"></i> Paternal homolog (<b>P</b> at the centromere)</span>
+      <span><i class="swatch" aria-hidden="true" style="background:linear-gradient(180deg,var(--blue) 45%,var(--red) 45%)"></i> Recombinant chromatid (dark band marks the exchange)</span>
+      <span><i class="swatch" aria-hidden="true" style="background:transparent;border:1.5px dashed var(--warn)"></i> Affected / missing</span>
     </div>
 
-    <div class="orient-note">
-      Current random orientation (which homolog faces the <b>left</b> pole): <code id="orientReadout">—</code>
+    <div class="orient-note" role="status" aria-live="polite">
+      Current random orientation (which homolog faces the <b>left</b> pole):
+      <code id="orientReadout" aria-hidden="true">—</code><span class="visually-hidden" id="orientReadoutSR"></span>
       &nbsp;·&nbsp; This run is one of <code id="comboReadout">2&sup3; = 8</code> equally likely arrangements.
       <br>Events this run: <code id="eventReadout">none</code>
     </div>
 
     <div class="caption" id="caption"></div>
   </div>
+</main>
+
+  <footer class="site-footer">
+    Prompt engineered in Claude (Anthropic AI) by Gaston Jofre-Rodriguez
+  </footer>
 </div>
 
 <script>
@@ -309,7 +360,7 @@ const CAPTIONS = {
   telophase: "<b>Cytokinesis I.</b> Two haploid daughter cells form. Each receives one homolog from every pair, following the same orientation set at metaphase. The chromosomes are still replicated — sister chromatids remain joined.",
   metaphase2:"<b>Metaphase II.</b> Both daughter cells divide in parallel. In each cell the still-replicated chromosomes line up on a new metaphase plate. No pairing happens now — there are no homologs left to pair.",
   anaphase2: "<b>Anaphase II.</b> Sister chromatids finally separate and move to opposite poles in each cell. Each pole now receives single, unreplicated chromatids.",
-  tetrad:    "<b>Four haploid cells.</b> Cytokinesis II yields four haploid cells, each with one chromatid per chromosome. Because we ignored crossing over, the two cells from each meiosis-I daughter are genetically identical (bracketed pairs)."
+  tetrad:    "<b>Four haploid cells.</b> Cytokinesis II yields four haploid cells, each with one chromatid per chromosome. Without crossing over, the two cells from each meiosis-I daughter are genetically identical; the brackets below show which pairs match in this run."
 };
 
 // Distinct relative chromosome lengths, used in order. The first N are taken
@@ -454,6 +505,13 @@ function shuffleOrientation(){
 function updateReadout(){
   const txt = orientation.map(o => o===0 ? "R" : "B").join(" ");
   document.getElementById("orientReadout").textContent = txt || "—";
+  const sr = document.getElementById("orientReadoutSR");
+  if(sr){
+    sr.textContent = orientation.length
+      ? orientation.map((o,i)=>
+          `chromosome ${i+1}, ${o===0?"maternal":"paternal"}`).join("; ")
+      : "not set yet";
+  }
   const combos = Math.pow(2, PAIRS.length);
   document.getElementById("comboReadout").innerHTML =
     `2<sup>${PAIRS.length}</sup> = ${combos}`;
@@ -534,7 +592,7 @@ function drawChromosome(parent, cx, cy, chromatids, scale, rot=0){
       // a thin seam line at the exchange point
       g.appendChild(el("line",{
         x1:dx-ARM_W-1, y1:cut, x2:dx+ARM_W+1, y2:cut,
-        stroke:base.d, "stroke-width":"1.2", "stroke-opacity":"0.75",
+        stroke:"#13202f", "stroke-width":"2.4", "stroke-opacity":"1",
         "clip-path":`url(#${id})`
       }));
     }
@@ -542,10 +600,22 @@ function drawChromosome(parent, cx, cy, chromatids, scale, rot=0){
 
   // centromere — coloured by the base of the chromatids (they share it)
   const cenStroke = colOf(chromatids[0].base).d;
-  g.appendChild(el("circle",{cx:0,cy:0,r:6.5,fill:"#f3e9ef",stroke:cenStroke,"stroke-width":"2"}));
+  g.appendChild(el("circle",{cx:0,cy:0,r:7,fill:"#f3e9ef",stroke:cenStroke,"stroke-width":"2"}));
+  originLetter(g, chromatids[0].base);
 
   parent.appendChild(g);
   return g;
+}
+
+/* M / P letter inside the centromere. Red vs blue are nearly identical in
+   luminance, so colour alone cannot carry maternal vs paternal (WCAG 1.4.1).
+   This letter is the non-colour cue. */
+function originLetter(g, code){
+  const t = el("text",{x:0, y:0, "text-anchor":"middle",
+    "dominant-baseline":"central", fill:"#13202f",
+    "font-size":"9","font-weight":"700","font-family":"inherit"});
+  t.textContent = code==='R' ? "M" : "P";
+  g.appendChild(t);
 }
 
 /* small helper: build an SVG element with attrs */
@@ -597,13 +667,14 @@ function drawChromatid(parent, cx, cy, spec, scale, rot=0){
     g.appendChild(el("path",{d, fill:"none", stroke:base.d, "stroke-width":"2"}));
     g.appendChild(el("line",{
       x1:-ROD_W-1, y1:cut, x2:ROD_W+1, y2:cut,
-      stroke:base.d, "stroke-width":"1.2","stroke-opacity":"0.75",
+      stroke:"#13202f", "stroke-width":"2.4","stroke-opacity":"1",
       "clip-path":`url(#${id})`
     }));
   }
 
   // centromere
-  g.appendChild(el("circle",{cx:0,cy:0,r:6.5,fill:"#f3e9ef",stroke:base.d,"stroke-width":"2"}));
+  g.appendChild(el("circle",{cx:0,cy:0,r:7,fill:"#f3e9ef",stroke:base.d,"stroke-width":"2"}));
+  originLetter(g, spec.base);
 
   parent.appendChild(g);
   return g;
@@ -711,7 +782,9 @@ function renderProphase(){
     const leftIsRed = orientation[i]===0;
     const leftCh  = leftIsRed ? mat : pat;
     const rightCh = leftIsRed ? pat : mat;
-    const dx = 34*pair.scale + 20;
+    // Synapsed bivalent: sit the homologs so their inner chromatids nearly
+    // touch, the same spacing used on the metaphase plate.
+    const dx = (16 + ARM_W) * pair.scale + 4;
     drawChromosome(g, -dx, 0, leftCh,  pair.scale, -6);
     drawChromosome(g,  dx, 0, rightCh, pair.scale,  6);
     // mark the chiasma between the two homologs
@@ -999,7 +1072,9 @@ function renderTetrad(){
   const abnormal = cells.filter(c=>c.length!==n).length;
   const msg = abnormal===0
     ? `all 4 gametes normal (n = ${n})`
-    : `${4-abnormal} normal · ${abnormal} aneuploid`;
+    : abnormal===4
+      ? `all 4 gametes aneuploid`
+      : `${4-abnormal} normal · ${abnormal} aneuploid`;
   const st = el("text",{x:400, y:454, "text-anchor":"middle",
     fill: abnormal? "var(--warn)":"var(--accent)",
     "font-size":"14","font-weight":"600","font-family":"inherit"});
@@ -1026,10 +1101,110 @@ function render(){
   RENDERERS[key]();
   document.getElementById("caption").innerHTML = captionFor(key);
   document.querySelectorAll(".stage-pill").forEach((p,idx)=>{
-    p.classList.toggle("active", idx===phaseIndex);
+    const on = idx===phaseIndex;
+    p.classList.toggle("active", on);
+    if(on) p.setAttribute("aria-current","step");
+    else   p.removeAttribute("aria-current");
   });
   document.getElementById("prevBtn").disabled = phaseIndex===0;
   document.getElementById("nextBtn").disabled = phaseIndex===PHASES.length-1;
+  announceScene(key);
+}
+
+/* ============================================================
+   Text equivalent of the SVG drawing. The scene itself is
+   aria-hidden, so everything a sighted student can see in the
+   picture is described here in words for screen reader users.
+   ============================================================ */
+function homologName(code){ return code==='R' ? "maternal" : "paternal"; }
+function chromatidName(spec){
+  if(spec.tip && spec.tip !== spec.base){
+    return `recombinant (${homologName(spec.base)} with a ${homologName(spec.tip)} tip)`;
+  }
+  return homologName(spec.base);
+}
+function listCellContents(items){
+  const n = PAIRS.length;
+  const parts = [];
+  for(let i=0;i<n;i++){
+    const here = items.filter(it=>it.i===i);
+    if(here.length===0) parts.push(`chromosome ${i+1}: absent`);
+    else parts.push(`chromosome ${i+1}: ` +
+      here.map(it=>chromatidName(it.spec)).join(" plus "));
+  }
+  return parts.join("; ");
+}
+
+function describeScene(key){
+  const n = PAIRS.length;
+  const orientText = orientation
+    .map((o,i)=>`chromosome ${i+1}, ${homologName(o===0?'R':'B')} homolog on the left`)
+    .join("; ");
+
+  switch(key){
+    case "prophase":
+      return `One diploid cell with ${n} tetrads scattered in it. Each tetrad is one maternal and ` +
+        `one paternal homolog, both already replicated. ${orientText}.` +
+        (crossoverOn ? ` A chiasma is marked on chromosome ${xoChrom+1}.` : "");
+    case "metaphase":
+      return `All ${n} tetrads are lined up on a single metaphase plate down the middle of the cell. ` +
+        `Reading the left side of the plate: ${orientText}.` +
+        (ndMode==="ndI" ? ` Chromosome ${ndChrom+1} is flagged; it will fail to separate.` : "");
+    case "anaphase": {
+      const left = PAIRS.map((p,i)=> ndI_bothToLeft(i)
+        ? `chromosome ${i+1}: both homologs`
+        : `chromosome ${i+1}: ${homologName(leftHomolog(i))}`).join("; ");
+      const right = PAIRS.map((p,i)=> ndI_bothToLeft(i)
+        ? `chromosome ${i+1}: none`
+        : `chromosome ${i+1}: ${homologName(leftHomolog(i)==='R'?'B':'R')}`).join("; ");
+      return `The cell is elongating and homologs are moving apart. Toward the left pole, ${left}. ` +
+        `Toward the right pole, ${right}.`;
+    }
+    case "telophase":
+    case "metaphase2": {
+      const halves = ['L','R'].map((side,s)=>{
+        const items = daughterContents(side).map(e=>({i:e.i, spec:e.chromatids[0]}));
+        return `${s===0?"Left":"Right"} cell — ${listCellContents(items)}`;
+      }).join(". ");
+      const lead = key==="telophase"
+        ? `Two haploid daughter cells, each chromosome still replicated as two sister chromatids. `
+        : `Both daughter cells have lined their replicated chromosomes up on their own metaphase plate. `;
+      return lead + halves + "." +
+        (key==="metaphase2" && ndMode==="ndII"
+          ? ` In the ${ndCellII===0?"left":"right"} cell, chromosome ${ndChrom+1} is flagged; its sister chromatids will fail to separate.`
+          : "");
+    }
+    case "anaphase2":
+      return `In both cells, sister chromatids are separating toward opposite poles, giving single ` +
+        `unreplicated chromatids at each of the four poles.` +
+        (ndMode==="ndII"
+          ? ` In the ${ndCellII===0?"left":"right"} cell, both sister chromatids of chromosome ${ndChrom+1} ` +
+            `are travelling to the same pole, leaving the other pole without it.`
+          : "");
+    case "tetrad": {
+      const cells = finalCells();
+      const txt = cells.map((c,idx)=>
+        `Cell ${idx+1} (${ploidyLabel(c).txt}) — ${listCellContents(c)}`).join(". ");
+      const abnormal = cells.filter(c=>c.length!==n).length;
+      const summary = abnormal===0
+        ? `All four gametes are normal, n equals ${n}.`
+        : abnormal===4
+          ? `All four gametes are aneuploid.`
+          : `${4-abnormal} gametes are normal and ${abnormal} are aneuploid.`;
+      return `Four haploid cells. ${txt}. ${summary}`;
+    }
+  }
+  return "";
+}
+
+function announceScene(key){
+  const node = document.getElementById("sceneDesc");
+  if(!node) return;
+  // don't flood the live region while Play through is stepping automatically
+  if(playing && phaseIndex < PHASES.length-1){ node.textContent = ""; return; }
+  const ph = PHASES[phaseIndex];
+  node.textContent =
+    `${ph.label}, step ${phaseIndex+1} of ${PHASES.length}. ${describeScene(key)}`;
 }
 
 /* caption + any extra note for the active genetics options */
@@ -1070,9 +1245,12 @@ function captionFor(key){
 function buildTrack(){
   const track = document.getElementById("stageTrack");
   PHASES.forEach((ph,idx)=>{
-    const pill = document.createElement("div");
+    const pill = document.createElement("button");
+    pill.type = "button";
     pill.className="stage-pill";
-    pill.innerHTML = `<span class="num">${ph.num}</span>${ph.label}`;
+    pill.innerHTML =
+      `<span class="num" aria-hidden="true">${ph.num}</span>${ph.label}` +
+      `<span class="visually-hidden"> — step ${idx+1} of ${PHASES.length}</span>`;
     pill.addEventListener("click", ()=>{ stopPlay(); phaseIndex=idx; render(); });
     track.appendChild(pill);
   });
@@ -1084,7 +1262,9 @@ function prev(){ if(phaseIndex>0){ phaseIndex--; render(); } }
 function stopPlay(){
   playing=false;
   if(playTimer){ clearInterval(playTimer); playTimer=null; }
-  document.getElementById("playBtn").innerHTML = "&#9654; Play through";
+  const b = document.getElementById("playBtn");
+  b.innerHTML = '<span aria-hidden="true">&#9654;</span> Play through';
+  b.setAttribute("aria-pressed","false");
 }
 
 function playThrough(){
@@ -1093,7 +1273,9 @@ function playThrough(){
   shuffleOrientation();
   phaseIndex=0; render();
   playing=true;
-  document.getElementById("playBtn").innerHTML = "&#10073;&#10073; Stop";
+  const b = document.getElementById("playBtn");
+  b.innerHTML = '<span aria-hidden="true">&#10073;&#10073;</span> Stop playback';
+  b.setAttribute("aria-pressed","true");
   playTimer = setInterval(()=>{
     if(phaseIndex<PHASES.length-1){ phaseIndex++; render(); }
     else { stopPlay(); }
@@ -1120,8 +1302,11 @@ document.getElementById("ndSeg").addEventListener("click", e=>{
   if(!btn) return;
   stopPlay();
   ndMode = btn.dataset.nd;
-  document.querySelectorAll("#ndSeg .seg-btn").forEach(b=>
-    b.classList.toggle("active", b===btn));
+  document.querySelectorAll("#ndSeg .seg-btn").forEach(b=>{
+    const on = b===btn;
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+  });
   updateReadout();
   render();
 });
@@ -1145,8 +1330,8 @@ function karyoPreview(n){
     inner += miniX(cx-16, y, "var(--red)","var(--red-d)", s);
     inner += miniX(cx+16, y, "var(--blue)","var(--blue-d)", s);
   });
-  return `<svg viewBox="0 0 ${w} ${h}" width="180" height="120"
-            xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="180" height="120" aria-hidden="true"
+            focusable="false" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
 }
 // a compact X glyph for the previews
 function miniX(cx,cy,fill,stroke,s){
@@ -1172,18 +1357,18 @@ function buildSetup(){
   grid.innerHTML="";
   KARYOTYPES.forEach(k=>{
     const combos = Math.pow(2,k.n);
-    const card = document.createElement("div");
+    const card = document.createElement("button");
+    card.type = "button";
     card.className="karyo-card";
-    card.setAttribute("role","button");
-    card.setAttribute("tabindex","0");
+    card.setAttribute("aria-label",
+      `Start with ${k.desc}, 2n equals ${2*k.n}. ` +
+      `2 to the power ${k.n} equals ${combos} possible chromosome combinations.`);
     card.innerHTML =
       karyoPreview(k.n) +
-      `<div class="kname">${k.label}</div>` +
-      `<div class="kdesc">${k.desc}</div>` +
-      `<div class="kcombo">2<sup>${k.n}</sup> = ${combos} possible cells</div>`;
-    const choose = ()=> startSim(k.n);
-    card.addEventListener("click", choose);
-    card.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); choose(); }});
+      `<span class="kname" aria-hidden="true">${k.label}</span>` +
+      `<span class="kdesc" aria-hidden="true">${k.desc}</span>` +
+      `<span class="kcombo" aria-hidden="true">2<sup>${k.n}</sup> = ${combos} possible cells</span>`;
+    card.addEventListener("click", ()=> startSim(k.n));
     grid.appendChild(card);
   });
 }
@@ -1201,8 +1386,12 @@ function startSim(n){
     `A simplified diploid cell with <b>${n} chromosome pair${n>1?"s":""}</b> (2n = ${2*n}). ` +
     `Each tetrad orients itself randomly at metaphase I &mdash; and that orientation is ` +
     `carried <b>concordantly</b> all the way to the <b>four haploid cells</b>. ` +
-    `Crossing over is ignored.`;
+    `For simplicity, <b>prometaphase I</b> is included within prophase I, and ` +
+    `<b>prophase II</b> is not shown.`;
   render();
+  // move keyboard focus into the simulation that just appeared
+  const first = document.querySelector("#stageTrack .stage-pill");
+  if(first) first.focus();
 }
 
 function goToSetup(){
@@ -1212,7 +1401,10 @@ function goToSetup(){
   document.getElementById("introText").innerHTML =
     `Choose a cell below. Each tetrad orients itself randomly at the metaphase plate &mdash; ` +
     `and that orientation is carried <b>concordantly</b> through anaphase and into the two ` +
-    `daughter cells. Crossing over is ignored.`;
+    `daughter cells. For simplicity, <b>prometaphase I</b> is included within prophase I, ` +
+    `and <b>prophase II</b> is not shown.`;
+  const first = document.querySelector("#karyoGrid .karyo-card");
+  if(first) first.focus();
 }
 
 /* init */
