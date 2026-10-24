@@ -291,7 +291,7 @@
       <div class="gp-row">
         <label class="switch">
           <input type="checkbox" id="xoToggle">
-          <span>Single crossing over event <em>(prophase I)</em></span>
+          <span>Single crossing over event per bivalent <em>(prophase I)</em></span>
         </label>
       </div>
       <div class="gp-row" role="group" aria-labelledby="ndLabel">
@@ -309,6 +309,7 @@
       <span><i class="swatch" aria-hidden="true" style="background:var(--red)"></i> Maternal homolog (<b>M</b> at the centromere)</span>
       <span><i class="swatch" aria-hidden="true" style="background:var(--blue)"></i> Paternal homolog (<b>P</b> at the centromere)</span>
       <span><i class="swatch" aria-hidden="true" style="background:linear-gradient(180deg,var(--blue) 45%,var(--red) 45%)"></i> Recombinant chromatid (dark band marks the exchange)</span>
+      <span><i class="swatch" aria-hidden="true" style="background:var(--cyto-line)"></i> Centrosome &amp; microtubules</span>
       <span><i class="swatch" aria-hidden="true" style="background:transparent;border:1.5px dashed var(--warn)"></i> Affected / missing</span>
     </div>
 
@@ -392,7 +393,6 @@ let playTimer = null;
 /* ---------- genetics options ---------- */
 let crossoverOn = false;        // single crossover in prophase I?
 let ndMode = "none";            // "none" | "ndI" | "ndII"
-let xoChrom  = 0;               // which chromosome crosses over (random each shuffle)
 let ndChrom  = 0;               // which chromosome misseggregates
 let ndCellII = 0;               // for ND II: which meiosis-II cell (0 = left, 1 = right)
 
@@ -410,8 +410,9 @@ let ndCellII = 0;               // for ND II: which meiosis-II cell (0 = left, 1
 function chromatidsFor(i){
   const mat = [{base:'R',tip:'R'}, {base:'R',tip:'R'}];
   const pat = [{base:'B',tip:'B'}, {base:'B',tip:'B'}];
-  if(crossoverOn && i===xoChrom){
-    // exchange distal tips between one maternal and one paternal chromatid
+  if(crossoverOn){
+    // every bivalent undergoes one crossover: exchange distal tips between
+    // one maternal and one paternal (non-sister) chromatid
     mat[1] = {base:'R', tip:'B'};   // recombinant: red body, blue tip
     pat[0] = {base:'B', tip:'R'};   // recombinant: blue body, red tip
   }
@@ -497,7 +498,6 @@ function ploidyLabel(cell){
 /* ---------- random setup ---------- */
 function shuffleOrientation(){
   orientation = PAIRS.map(()=> Math.random()<0.5 ? 0 : 1);
-  xoChrom = Math.floor(Math.random()*PAIRS.length);
   ndChrom = Math.floor(Math.random()*PAIRS.length);
   ndCellII = Math.random()<0.5 ? 0 : 1;
   updateReadout();
@@ -518,7 +518,7 @@ function updateReadout(){
   const el2 = document.getElementById("eventReadout");
   if(el2){
     const bits=[];
-    if(crossoverOn) bits.push(`crossover on chromosome ${xoChrom+1}`);
+    if(crossoverOn) bits.push(`one crossover on every bivalent`);
     if(ndMode==="ndI")  bits.push(`nondisjunction at anaphase I (chromosome ${ndChrom+1})`);
     if(ndMode==="ndII") bits.push(`nondisjunction at anaphase II (chromosome ${ndChrom+1})`);
     el2.textContent = bits.length ? bits.join(" · ") : "none";
@@ -689,32 +689,63 @@ function drawCircleCell(parent, cx, cy, r){
   }));
 }
 
-/* a peanut / dumbbell membrane for anaphase (one cell elongating) */
-function drawPeanutCell(parent, cx, cy){
-  // two lobes joined by a pinched middle
-  const lobeR = 135, gap = 170;
-  const lx = cx-gap, rx = cx+gap;
-  const d = `
-    M ${lx} ${cy-lobeR}
-    A ${lobeR} ${lobeR} 0 1 0 ${lx} ${cy+lobeR}
-    Q ${cx-30} ${cy+55} ${cx} ${cy+40}
-    Q ${cx+30} ${cy+55} ${rx} ${cy+lobeR}
-    A ${lobeR} ${lobeR} 0 1 0 ${rx} ${cy-lobeR}
-    Q ${cx+30} ${cy-55} ${cx} ${cy-40}
-    Q ${cx-30} ${cy-55} ${lx} ${cy-lobeR}
-    Z`;
-  parent.appendChild(el("path",{
-    d, fill:"var(--cyto)", "fill-opacity":"0.10",
-    stroke:"var(--cyto-line)", "stroke-width":"3", "stroke-linejoin":"round"
-  }));
-}
-
 function drawOvalCell(parent, cx, cy, rx, ry){
   parent.appendChild(el("ellipse",{
     cx,cy,rx,ry,
     fill:"var(--cyto)", "fill-opacity":"0.10",
     stroke:"var(--cyto-line)", "stroke-width":"3"
   }));
+}
+
+/* ============================================================
+   SPINDLE APPARATUS — deliberately schematic: a centrosome at
+   each pole with a few astral rays, plus one kinetochore
+   microtubule per pole-to-centromere attachment.
+   Drawn into a layer added BEFORE the chromosomes so the
+   chromosomes paint over the ends of the microtubules.
+   ============================================================ */
+const MT = "var(--cyto-line)";
+
+function spindleLayer(){
+  const g = el("g",{"class":"spindle"});
+  scene.appendChild(g);
+  return g;
+}
+
+/* A centrosome with astral rays fanning AWAY from the cell centre.
+   `outAngle` is the outward direction in radians (0 = right, PI = left). */
+function drawPole(g, x, y, outAngle){
+  [-58,-30,0,30,58].forEach(a=>{
+    const r = (a===0 ? 17 : 13), ang = outAngle + a*Math.PI/180;
+    g.appendChild(el("line",{
+      x1:x, y1:y,
+      x2:x + Math.cos(ang)*r, y2:y + Math.sin(ang)*r,
+      stroke:MT, "stroke-width":"1.6", "stroke-opacity":"0.5",
+      "stroke-linecap":"round"
+    }));
+  });
+  g.appendChild(el("circle",{
+    cx:x, cy:y, r:5,
+    fill:MT, "fill-opacity":"0.8", stroke:MT, "stroke-width":"1.4"
+  }));
+}
+
+/* Kinetochore microtubules: one line from the pole to each target centromere. */
+function drawMT(g, px, py, targets){
+  targets.forEach(t=>{
+    g.appendChild(el("line",{
+      x1:px, y1:py, x2:t.x, y2:t.y,
+      stroke:MT, "stroke-width":"1.4", "stroke-opacity":"0.45"
+    }));
+  });
+}
+
+/* Draw a full two-pole spindle in one call. */
+function drawSpindle(g, cx, cy, poleOff, leftTargets, rightTargets){
+  drawPole(g, cx-poleOff, cy, Math.PI);
+  drawPole(g, cx+poleOff, cy, 0);
+  drawMT(g, cx-poleOff, cy, leftTargets);
+  drawMT(g, cx+poleOff, cy, rightTargets);
 }
 
 /* ============================================================
@@ -768,9 +799,20 @@ function drawChiasma(parent, x, y, scale){
   parent.appendChild(g);
 }
 
+/* The two centrosomes in prophase I. They have duplicated but have NOT yet
+   finished migrating, so they sit on a slanted axis rather than exactly
+   opposite one another, and carry only astral rays — no kinetochore fibres
+   until the chromosomes reach the plate. */
+const P_POLES = [{x:220, y:258}, {x:580, y:202}];
+
 /* PROPHASE I — tetrads scattered, random L/R, slight tilt */
 function renderProphase(){
   drawCircleCell(scene, 400, 230, 205);
+
+  const spindle = spindleLayer();
+  P_POLES.forEach(p=>{
+    drawPole(spindle, p.x, p.y, Math.atan2(p.y-230, p.x-400));
+  });
 
   const spots = scatterPositions(PAIRS.length);
 
@@ -788,7 +830,7 @@ function renderProphase(){
     drawChromosome(g, -dx, 0, leftCh,  pair.scale, -6);
     drawChromosome(g,  dx, 0, rightCh, pair.scale,  6);
     // mark the chiasma between the two homologs
-    if(crossoverOn && i===xoChrom){
+    if(crossoverOn){
       drawChiasma(g, 0, -14*pair.scale, pair.scale);
     }
   });
@@ -805,6 +847,9 @@ function renderMetaphase(){
     "stroke-dasharray":"6 7", "stroke-opacity":"0.6"
   }));
 
+  const spindle = spindleLayer();
+  const lT = [], rT = [];
+
   const [bt, bb] = rowBand(PAIRS.length);
   const rowY = rowPositions(PAIRS.length, bt, bb);
   PAIRS.forEach((pair,i)=>{
@@ -818,9 +863,20 @@ function renderMetaphase(){
     const dx = (16 + 9) * pair.scale + 4;
     drawChromosome(scene, 400-dx, y, leftCh,  pair.scale, 0);
     drawChromosome(scene, 400+dx, y, rightCh, pair.scale, 0);
+    // Microtubule attachment. Normally each homolog faces its own pole;
+    // for the nondisjunction pair BOTH homologs attach to the left pole,
+    // which is what makes them travel together at anaphase I.
+    if(ndI_bothToLeft(i)){
+      lT.push({x:400-dx, y}, {x:400+dx, y});
+    } else {
+      lT.push({x:400-dx, y});
+      rT.push({x:400+dx, y});
+    }
     // flag the chromosome that will misseggregate at anaphase I
     if(ndMode==="ndI" && i===ndChrom) markND(scene, 400, y, 46*pair.scale);
   });
+
+  drawSpindle(spindle, 400, 230, 178, lT, rT);
 }
 
 /* a soft highlight ring flagging an affected chromosome */
@@ -832,15 +888,42 @@ function markND(parent, x, y, r){
   }));
 }
 
-/* ANAPHASE I — homologs pulled to opposite poles, membrane elongating.
-   With ND I, the affected pair travels together to the LEFT pole. */
-function renderAnaphase(){
-  drawPeanutCell(scene, 400, 230);
+/* ANAPHASE I — homologs pulled to opposite poles inside one elongated
+   oval cell. With ND I, the affected pair travels together to the LEFT pole. */
+const A_RX = 385, A_RY = 225, A_POLE = 150;   // oval radii; pole offset from centre
 
-  const [bt, bb] = rowBand(PAIRS.length);
-  const rowY = rowPositions(PAIRS.length, bt, bb);
-  const leftPoleX  = 210;
-  const rightPoleX = 590;
+/* How far above/below centre a chromosome may sit at the poles and still
+   stay inside the oval. Treats each drawn chromosome (and the ND marker
+   ring, when shown) as a box and keeps its corners within the ellipse. */
+function anaphaseRoom(){
+  const nd = ndMode==="ndI";
+  let room = Infinity;
+  PAIRS.forEach(pair=>{
+    const s = pair.scale;
+    let w = (16+ARM_W)*s;                 // half-width of one drawn X
+    let h = (ARM_LEN+8)*s;                // half-height of one drawn X
+    if(nd){
+      w += (16+ARM_W)*s + 6;              // the pair sits side by side
+      w  = Math.max(w, 46*s + 34);        // ...inside the marker ring
+      h  = Math.max(h, 46*s + 6);
+    }
+    const dx = A_POLE + w;                // outermost x this chromosome reaches
+    const k  = 1 - Math.pow(dx/A_RX, 2);
+    room = Math.min(room, k>0 ? A_RY*Math.sqrt(k) - h - 4 : 0);
+  });
+  return Math.max(Math.min(room, 125), 40);
+}
+
+function renderAnaphase(){
+  drawOvalCell(scene, 400, 230, A_RX, A_RY);
+
+  const spindle = spindleLayer();
+  const lT = [], rT = [];
+
+  const room = anaphaseRoom();
+  const rowY = rowPositions(PAIRS.length, 230-room, 230+room);
+  const leftPoleX  = 400 - A_POLE;
+  const rightPoleX = 400 + A_POLE;
 
   PAIRS.forEach((pair,i)=>{
     const y = rowY[i];
@@ -851,11 +934,17 @@ function renderAnaphase(){
       drawChromosome(scene, leftPoleX-off, y, mat, pair.scale, 0);
       drawChromosome(scene, leftPoleX+off, y, pat, pair.scale, 0);
       markND(scene, leftPoleX, y, 46*pair.scale);
+      lT.push({x:leftPoleX-off, y}, {x:leftPoleX+off, y});
       return;
     }
     drawChromosome(scene, leftPoleX,  y, homologToPole(i,'L'), pair.scale, 0);
     drawChromosome(scene, rightPoleX, y, homologToPole(i,'R'), pair.scale, 0);
+    lT.push({x:leftPoleX,  y});
+    rT.push({x:rightPoleX, y});
   });
+
+  // the shortening kinetochore fibres: poles sit outside the chromosomes
+  drawSpindle(spindle, 400, 230, A_POLE+160, lT, rT);
 }
 
 /* AFTER CYTOKINESIS I — two daughter cells. ND I leaves one cell with an
@@ -923,6 +1012,8 @@ function renderMetaphase2(){
       stroke:"var(--accent)","stroke-width":"2",
       "stroke-dasharray":"6 7","stroke-opacity":"0.55"
     }));
+    const spindle = spindleLayer();
+    const lT = [], rT = [];
     PAIRS.forEach((pair,i)=>{
       const y = rowY[i];
       if(ndI_bothToLeft(i)){
@@ -932,17 +1023,24 @@ function renderMetaphase2(){
           drawChromosome(scene, cell.cx-off, y, mat, pair.scale, 0);
           drawChromosome(scene, cell.cx+off, y, pat, pair.scale, 0);
           markND(scene, cell.cx, y, 46*pair.scale);
+          // each of the two chromosomes has sisters facing both poles
+          lT.push({x:cell.cx-off, y}, {x:cell.cx+off, y});
+          rT.push({x:cell.cx-off, y}, {x:cell.cx+off, y});
         } else {
-          ghostSlot(scene, cell.cx, y, pair.scale);
+          ghostSlot(scene, cell.cx, y, pair.scale);   // nothing to attach to
         }
         return;
       }
       drawChromosome(scene, cell.cx, y, homologToPole(i, cell.side), pair.scale, 0);
+      // sister kinetochores face opposite poles
+      lT.push({x:cell.cx-7, y});
+      rT.push({x:cell.cx+7, y});
       // flag the chromosome that will fail to separate at anaphase II
       if(ndMode==="ndII" && i===ndChrom && s===ndCellII){
         markND(scene, cell.cx, y, 46*pair.scale);
       }
     });
+    drawSpindle(spindle, cell.cx, 230, 128, lT, rT);
   });
 }
 
@@ -957,6 +1055,8 @@ function renderAnaphase2(){
 
   cells.forEach((cell, s)=>{
     drawOvalCell(scene, cell.cx, 230, 150, 195);
+    const spindle = spindleLayer();
+    const lT = [], rT = [];
     PAIRS.forEach((pair,i)=>{
       const y = rowY[i];
 
@@ -976,6 +1076,8 @@ function renderAnaphase2(){
         drawChromatid(scene, cell.cx+xOff-o, y, mat[1], pair.scale, 0);
         drawChromatid(scene, cell.cx+xOff+o, y, pat[1], pair.scale, 0);
         markND(scene, cell.cx, y, 46*pair.scale);
+        lT.push({x:cell.cx-xOff-o, y}, {x:cell.cx-xOff+o, y});
+        rT.push({x:cell.cx+xOff-o, y}, {x:cell.cx+xOff+o, y});
         return;
       }
 
@@ -988,13 +1090,18 @@ function renderAnaphase2(){
         drawChromatid(scene, cell.cx-xOff+o, y, ch[1], pair.scale, 0);
         ghostSlot(scene, cell.cx+xOff, y, pair.scale);
         markND(scene, cell.cx, y, 46*pair.scale);
+        // both sisters are pulled by the SAME pole — the cause of ND II
+        lT.push({x:cell.cx-xOff-o, y}, {x:cell.cx-xOff+o, y});
         return;
       }
 
       // --- normal separation ---
       drawChromatid(scene, cell.cx-xOff, y, ch[0], pair.scale, 0);
       drawChromatid(scene, cell.cx+xOff, y, ch[1], pair.scale, 0);
+      lT.push({x:cell.cx-xOff, y});
+      rT.push({x:cell.cx+xOff, y});
     });
+    drawSpindle(spindle, cell.cx, 230, 128, lT, rT);
   });
 }
 
@@ -1144,12 +1251,17 @@ function describeScene(key){
   switch(key){
     case "prophase":
       return `One diploid cell with ${n} tetrads scattered in it. Each tetrad is one maternal and ` +
-        `one paternal homolog, both already replicated. ${orientText}.` +
-        (crossoverOn ? ` A chiasma is marked on chromosome ${xoChrom+1}.` : "");
+        `one paternal homolog, both already replicated. Two centrosomes sit on a slanted axis, ` +
+        `still migrating apart and not yet attached to any chromosome. ${orientText}.` +
+        (crossoverOn ? ` A chiasma is marked on every bivalent.` : "");
     case "metaphase":
       return `All ${n} tetrads are lined up on a single metaphase plate down the middle of the cell. ` +
-        `Reading the left side of the plate: ${orientText}.` +
-        (ndMode==="ndI" ? ` Chromosome ${ndChrom+1} is flagged; it will fail to separate.` : "");
+        `A spindle runs between two centrosomes at opposite poles, with microtubules reaching ` +
+        `each homolog. Reading the left side of the plate: ${orientText}.` +
+        (ndMode==="ndI"
+          ? ` Chromosome ${ndChrom+1} is flagged: both of its homologs are attached to the ` +
+            `left pole, so it will fail to separate.`
+          : "");
     case "anaphase": {
       const left = PAIRS.map((p,i)=> ndI_bothToLeft(i)
         ? `chromosome ${i+1}: both homologs`
@@ -1157,7 +1269,8 @@ function describeScene(key){
       const right = PAIRS.map((p,i)=> ndI_bothToLeft(i)
         ? `chromosome ${i+1}: none`
         : `chromosome ${i+1}: ${homologName(leftHomolog(i)==='R'?'B':'R')}`).join("; ");
-      return `The cell is elongating and homologs are moving apart. Toward the left pole, ${left}. ` +
+      return `The cell is elongating and homologs are moving apart, each drawn by shortening ` +
+        `microtubules to the centrosome at its pole. Toward the left pole, ${left}. ` +
         `Toward the right pole, ${right}.`;
     }
     case "telophase":
@@ -1168,15 +1281,17 @@ function describeScene(key){
       }).join(". ");
       const lead = key==="telophase"
         ? `Two haploid daughter cells, each chromosome still replicated as two sister chromatids. `
-        : `Both daughter cells have lined their replicated chromosomes up on their own metaphase plate. `;
+        : `Both daughter cells have lined their replicated chromosomes up on their own metaphase ` +
+          `plate, each cell with its own spindle linking the two sister kinetochores of every ` +
+          `chromosome to opposite poles. `;
       return lead + halves + "." +
         (key==="metaphase2" && ndMode==="ndII"
           ? ` In the ${ndCellII===0?"left":"right"} cell, chromosome ${ndChrom+1} is flagged; its sister chromatids will fail to separate.`
           : "");
     }
     case "anaphase2":
-      return `In both cells, sister chromatids are separating toward opposite poles, giving single ` +
-        `unreplicated chromatids at each of the four poles.` +
+      return `In both cells, microtubules have pulled the sister chromatids toward opposite poles, ` +
+        `giving single unreplicated chromatids at each of the four poles.` +
         (ndMode==="ndII"
           ? ` In the ${ndCellII===0?"left":"right"} cell, both sister chromatids of chromosome ${ndChrom+1} ` +
             `are travelling to the same pole, leaving the other pole without it.`
@@ -1210,17 +1325,17 @@ function announceScene(key){
 /* caption + any extra note for the active genetics options */
 function captionFor(key){
   let txt = CAPTIONS[key];
-  const c = xoChrom+1, d = ndChrom+1;
+  const d = ndChrom+1;
   const notes = [];
 
   if(crossoverOn && key==="prophase"){
-    notes.push(`<b>Crossing over:</b> a chiasma has formed on chromosome ${c}. ` +
-      `Only <b>two</b> of its four chromatids — one maternal, one paternal — exchange ` +
-      `tips. The other two stay parental.`);
+    notes.push(`<b>Crossing over:</b> a chiasma has formed on <b>every</b> bivalent. ` +
+      `On each one, only <b>two</b> of the four chromatids — one maternal, one paternal — ` +
+      `exchange tips. The other two stay parental.`);
   }
   if(crossoverOn && key==="tetrad"){
-    notes.push(`Because chromosome ${c} crossed over, its sister chromatids were no ` +
-      `longer identical, so <b>all four cells differ</b> — the hallmark of recombination.`);
+    notes.push(`Because every chromosome crossed over, no chromosome's sister chromatids ` +
+      `were still identical, so <b>all four cells differ</b> — the hallmark of recombination.`);
   }
   if(ndMode==="ndI" && (key==="anaphase"||key==="metaphase")){
     notes.push(`<b>Nondisjunction (anaphase I):</b> the homologous pair of chromosome ${d} ` +
