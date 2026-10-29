@@ -421,6 +421,21 @@ function chromatidsFor(i){
   return {mat, pat};
 }
 
+/* Presentation order for the two chromatids of a homolog drawn as half of
+   a bivalent. The crossover happened between the two INNER (facing)
+   chromatids, so that is where the swapped tips belong — on the right-hand
+   blade of the left homolog and the left-hand blade of the right one.
+   chromatidsFor() always builds the recombinant at a fixed index, which
+   puts it on the outside whenever the paternal homolog is on the left, so
+   flip the pair for display. Display only: the model is untouched, and the
+   two sister chromatids are interchangeable. */
+function facing(ch, side){
+  const r = ch.findIndex(c => c.tip && c.tip !== c.base);
+  if(r === -1) return ch;                 // no crossover on this chromosome
+  const inner = side === 'L' ? 1 : 0;     // blade index nearest the partner
+  return r === inner ? ch : [ch[1], ch[0]];
+}
+
 /* Which homolog ('R' or 'B') faces the LEFT pole at metaphase I. */
 function leftHomolog(i){ return orientation[i]===0 ? 'R' : 'B'; }
 
@@ -829,8 +844,8 @@ function renderProphase(){
     // Synapsed bivalent: sit the homologs so their inner chromatids nearly
     // touch, the same spacing used on the metaphase plate.
     const dx = (16 + ARM_W) * pair.scale + 4;
-    drawChromosome(g, -dx, 0, leftCh,  pair.scale, -6);
-    drawChromosome(g,  dx, 0, rightCh, pair.scale,  6);
+    drawChromosome(g, -dx, 0, facing(leftCh, 'L'),  pair.scale, -6);
+    drawChromosome(g,  dx, 0, facing(rightCh,'R'), pair.scale,  6);
     // mark the chiasma between the two homologs
     if(crossoverOn){
       drawChiasma(g, 0, -14*pair.scale, pair.scale);
@@ -863,8 +878,8 @@ function renderMetaphase(){
     // half-width of a drawn X is ~ (16 + armW) * scale; sit homologs so their
     // inner chromatids nearly touch the plate
     const dx = (16 + 9) * pair.scale + 4;
-    drawChromosome(scene, 400-dx, y, leftCh,  pair.scale, 0);
-    drawChromosome(scene, 400+dx, y, rightCh, pair.scale, 0);
+    drawChromosome(scene, 400-dx, y, facing(leftCh, 'L'),  pair.scale, 0);
+    drawChromosome(scene, 400+dx, y, facing(rightCh,'R'), pair.scale, 0);
     // Microtubule attachment. Normally each homolog faces its own pole;
     // for the nondisjunction pair BOTH homologs attach to the left pole,
     // which is what makes them travel together at anaphase I.
@@ -1079,7 +1094,7 @@ function renderMetaphase2(){
   const cells = [{cx:205, side:'L'}, {cx:595, side:'R'}];
   const n = PAIRS.length;
   const [bt, bb] = rowBand(n);
-  const rowY = rowPositions(n, bt, bb);
+  const rowY = rowPositions(PAIRS.length, bt, bb);
 
   cells.forEach((cell, s)=>{
     drawOvalCell(scene, cell.cx, 230, 150, 195);
